@@ -4,6 +4,7 @@ import os
 
 import torch
 import torch.nn as nn
+import wandb
 import yaml
 from torch.optim.lr_scheduler import MultiStepLR
 
@@ -35,13 +36,66 @@ def ckpt_path(cfg, dataset, arch, config_id, is_quantized=False):
     return os.path.join(cfg["checkpoints_dir"], dataset, arch, f"{config_id}{ext}")
 
 
+def log_sample_images(loader, dataset, run, n=8):
+    CIFAR10_CLASSES  = ["airplane","automobile","bird","cat","deer","dog","frog","horse","ship","truck"]
+    CIFAR100_CLASSES = [str(i) for i in range(100)]
+    classes = CIFAR10_CLASSES if dataset == "cifar10" else CIFAR100_CLASSES
+
+    MEAN = torch.tensor([0.4914, 0.4822, 0.4465] if dataset == "cifar10" else [0.5071, 0.4867, 0.4408]).view(3,1,1)
+    STD  = torch.tensor([0.2023, 0.1994, 0.2010] if dataset == "cifar10" else [0.2675, 0.2565, 0.2761]).view(3,1,1)
+
+    images, labels = next(iter(loader))
+    images = images[:n]
+    labels = labels[:n]
+
+    imgs_denorm = torch.clamp(images * STD + MEAN, 0, 1)
+    logged = []
+    for img, lbl in zip(imgs_denorm, labels):
+        np_img = (img.permute(1,2,0).numpy() * 255).astype("uint8")
+        logged.append(wandb.Image(np_img, caption=classes[lbl.item()]))
+    run.log({"sample_images": logged})
+
+
+def log_corruption_samples(dataset, data_dir, run, n=5):
+    from data.loaders import CORRUPTIONS, get_corruption_loader
+    MEAN = torch.tensor([0.4914, 0.4822, 0.4465] if dataset == "cifar10" else [0.5071, 0.4867, 0.4408]).view(3,1,1)
+    STD  = torch.tensor([0.2023, 0.1994, 0.2010] if dataset == "cifar10" else [0.2675, 0.2565, 0.2761]).view(3,1,1)
+
+    for corruption in CORRUPTIONS:
+        logged = []
+        for severity in [1, 3, 5]:
+            try:
+                loader = get_corruption_loader(dataset, corruption, severity, data_dir, batch_size=n, num_workers=2)
+                images, labels = next(iter(loader))
+                images = images[:n]
+                imgs_denorm = torch.clamp(images * STD + MEAN, 0, 1)
+                for img, lbl in zip(imgs_denorm, labels):
+                    np_img = (img.permute(1,2,0).numpy() * 255).astype("uint8")
+                    logged.append(wandb.Image(np_img, caption=f"severity={severity} label={lbl.item()}"))
+            except Exception:
+                pass
+        if logged:
+            run.log({f"corruptions/{corruption}": logged})
+
+
 def train_baseline(arch, dataset, cfg, device):
     num_classes          = 10 if dataset == "cifar10" else 100
     t_cfg                = cfg["training"]
     train_loader, val_loader = get_loaders(dataset, cfg["data_dir"],
                                             batch_size=t_cfg["batch_size"],
                                             num_workers=cfg["num_workers"])
-    model     = get_model(arch, num_classes=num_classes)
+
+    run = wandb.init(
+        project=cfg.get("wandb_project", "CNN-Compression"),
+        name=f"{arch}_{dataset}_baseline",
+        config={"arch": arch, "dataset": dataset, "compression": "baseline", **t_cfg},
+        reinit=True,
+    )
+
+    log_sample_images(train_loader, dataset, run)
+    log_corruption_samples(dataset, cfg["data_dir"], run)
+
+    model = get_model(arch, num_classes=num_classes)
     if torch.cuda.device_count() > 1 and device == "cuda":
         print(f"  Using {torch.cuda.device_count()} GPUs")
         model = nn.DataParallel(model)
@@ -52,40 +106,69 @@ def train_baseline(arch, dataset, cfg, device):
     criterion = nn.CrossEntropyLoss(label_smoothing=t_cfg.get("label_smoothing", 0.0))
     scaler    = torch.cuda.amp.GradScaler() if (cfg.get("mixed_precision") and device == "cuda") else None
 
+    wandb.watch(model, log="gradients", log_freq=100)
+
     best_acc, best_state = 0.0, None
     for epoch in range(t_cfg["epochs"]):
         model.train()
+        running_loss = 0.0
+        correct = total = 0
         for x, y in train_loader:
             x, y = x.to(device), y.to(device)
             optimizer.zero_grad()
             if scaler:
                 with torch.cuda.amp.autocast():
-                    loss = criterion(model(x), y)
+                    out  = model(x)
+                    loss = criterion(out, y)
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
             else:
-                criterion(model(x), y).backward()
+                out  = model(x)
+                loss = criterion(out, y)
+                loss.backward()
                 optimizer.step()
+            running_loss += loss.item()
+            preds    = out.argmax(1)
+            correct += (preds == y).sum().item()
+            total   += y.size(0)
         scheduler.step()
-        if (epoch + 1) % 10 == 0 or epoch == 0:
-            m_eval = model.module if isinstance(model, nn.DataParallel) else model
-            m_eval.eval()
-            correct = total = 0
-            with torch.no_grad():
-                for x, y in val_loader:
-                    preds    = m_eval(x.to(device)).argmax(1).cpu()
-                    correct += (preds == y).sum().item()
-                    total   += y.size(0)
-            acc = 100.0 * correct / total
-            print(f"  [{arch}|{dataset}] epoch {epoch+1}/{t_cfg['epochs']}  val_acc: {acc:.2f}%")
-            if acc > best_acc:
-                best_acc   = acc
-                best_state = copy.deepcopy(m_eval.state_dict())
+
+        train_acc  = 100.0 * correct / total
+        train_loss = running_loss / len(train_loader)
+
+        m_eval = model.module if isinstance(model, nn.DataParallel) else model
+        m_eval.eval()
+        val_correct = val_total = 0
+        with torch.no_grad():
+            for x, y in val_loader:
+                preds        = m_eval(x.to(device)).argmax(1).cpu()
+                val_correct += (preds == y).sum().item()
+                val_total   += y.size(0)
+        val_acc = 100.0 * val_correct / val_total
+
+        wandb.log({
+            "epoch":      epoch + 1,
+            "train/loss": train_loss,
+            "train/acc":  train_acc,
+            "val/acc":    val_acc,
+            "lr":         scheduler.get_last_lr()[0],
+        })
+
+        print(f"  [{arch}|{dataset}] epoch {epoch+1}/{t_cfg['epochs']}  loss: {train_loss:.4f}  train_acc: {train_acc:.2f}%  val_acc: {val_acc:.2f}%")
+
+        if val_acc > best_acc:
+            best_acc   = val_acc
+            best_state = copy.deepcopy(m_eval.state_dict())
 
     m_final = model.module if isinstance(model, nn.DataParallel) else model
     m_final.load_state_dict(best_state)
-    save_model(m_final, ckpt_path(cfg, dataset, arch, "baseline"), is_quantized=False)
+    out_path = ckpt_path(cfg, dataset, arch, "baseline")
+    save_model(m_final, out_path, is_quantized=False)
+
+    wandb.summary["best_val_acc"] = best_acc
+    wandb.summary["model_size_mb"] = os.path.getsize(out_path) / 1e6
+    run.finish()
     print(f"  Best val_acc: {best_acc:.2f}%")
     return m_final
 
@@ -106,14 +189,28 @@ def run_compression(arch, dataset, phase_configs, cfg, device):
                                             batch_size=cfg["training"]["batch_size"],
                                             num_workers=cfg["num_workers"])
     cal_loader           = get_calibration_loader(dataset, cfg["data_dir"], num_workers=cfg["num_workers"])
+
     for comp_cfg in phase_configs:
         cid    = comp_cfg["id"]
         method = comp_cfg.get("method", "none")
         if method == "none":
             continue
         print(f"\n  -- [{arch}|{dataset}] {comp_cfg['label']} --")
+
+        run = wandb.init(
+            project=cfg.get("wandb_project", "CNN-Compression"),
+            name=f"{arch}_{dataset}_{cid}",
+            config={"arch": arch, "dataset": dataset, "compression": cid, **comp_cfg},
+            reinit=True,
+        )
+
         compressed, is_q = compress(baseline, method, comp_cfg, train_loader, val_loader, cal_loader, device=device)
-        save_model(compressed, ckpt_path(cfg, dataset, arch, cid, is_quantized=is_q), is_quantized=is_q)
+        out_path         = ckpt_path(cfg, dataset, arch, cid, is_quantized=is_q)
+        save_model(compressed, out_path, is_quantized=is_q)
+
+        wandb.summary["model_size_mb"]    = os.path.getsize(out_path) / 1e6
+        wandb.summary["is_quantized"]     = is_q
+        run.finish()
 
 
 def main():

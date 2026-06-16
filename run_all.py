@@ -33,7 +33,7 @@ def main():
         run(dl, "Downloading CIFAR-*-C")
 
     for phase in ("baseline", "phase1", "phase2", "phase3"):
-        if args.phase in ("all", phase):
+        if args.phase in (phase, "all"):
             run([py, "train.py"] + base + ["--phase", phase], f"Training: {phase}")
 
     if args.phase in ("all", "evaluate"):

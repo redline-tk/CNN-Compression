@@ -3,6 +3,7 @@ import csv
 import os
 
 import torch
+import wandb
 import yaml
 
 from models.registry import get_model, list_architectures
@@ -39,6 +40,38 @@ def all_configs(cfg):
     return configs
 
 
+def log_corruption_comparison(model, dataset, data_dir, ev_cfg, run):
+    MEAN = torch.tensor([0.4914, 0.4822, 0.4465] if dataset == "cifar10" else [0.5071, 0.4867, 0.4408]).view(3,1,1)
+    STD  = torch.tensor([0.2023, 0.1994, 0.2010] if dataset == "cifar10" else [0.2675, 0.2565, 0.2761]).view(3,1,1)
+
+    CIFAR10_CLASSES  = ["airplane","automobile","bird","cat","deer","dog","frog","horse","ship","truck"]
+    CIFAR100_CLASSES = [str(i) for i in range(100)]
+    classes = CIFAR10_CLASSES if dataset == "cifar10" else CIFAR100_CLASSES
+
+    for corruption in CORRUPTIONS:
+        table = wandb.Table(columns=["severity", "image", "true_label", "pred_label", "correct"])
+        for severity in [1, 3, 5]:
+            try:
+                loader      = get_corruption_loader(dataset, corruption, severity, data_dir,
+                                                     batch_size=8, num_workers=2)
+                images, labels = next(iter(loader))
+                imgs_denorm = torch.clamp(images * STD + MEAN, 0, 1)
+                with torch.no_grad():
+                    preds = model(images).argmax(1)
+                for img, lbl, pred in zip(imgs_denorm, labels, preds):
+                    np_img = (img.permute(1,2,0).numpy() * 255).astype("uint8")
+                    table.add_data(
+                        severity,
+                        wandb.Image(np_img),
+                        classes[lbl.item()],
+                        classes[pred.item()],
+                        lbl.item() == pred.item(),
+                    )
+            except Exception:
+                pass
+        run.log({f"corruption_predictions/{corruption}": table})
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config",  default="configs/config.yaml")
@@ -54,6 +87,16 @@ def main():
     ev_cfg = cfg["evaluation"]
     device = "cpu"
     rows   = []
+
+    summary_run = wandb.init(
+        project=cfg.get("wandb_project", "CNN-Compression"),
+        name=f"evaluation_{args.dataset}",
+        reinit=True,
+    )
+    results_table = wandb.Table(columns=[
+        "arch", "config", "acc_clean", "top5_clean", "mce",
+        "ece_clean", "latency_ms", "size_mb", "compression_ratio",
+    ])
 
     for arch in archs:
         print(f"\n{'='*60}  {arch}  {'='*60}")
@@ -87,6 +130,14 @@ def main():
                 continue
 
             print(f"\n  -- {label} --")
+
+            run = wandb.init(
+                project=cfg.get("wandb_project", "CNN-Compression"),
+                name=f"eval_{arch}_{args.dataset}_{cid}",
+                config={"arch": arch, "dataset": args.dataset, "config_id": cid},
+                reinit=True,
+            )
+
             path, _  = ckpt_path(cfg, args.dataset, arch, cid)
             size     = model_size_mb(path)
             cr       = compression_ratio(baseline_size, size)
@@ -116,6 +167,15 @@ def main():
                 "ece_clean":         round(ece_clean, 5),
             }
 
+            wandb.log({
+                "acc_clean":         acc_clean,
+                "top5_clean":        top5_clean,
+                "ece_clean":         ece_clean,
+                "latency_ms":        latency,
+                "size_mb":           size,
+                "compression_ratio": cr,
+            })
+
             if check_cifar_c(cfg["data_dir"], args.dataset):
                 def loader_fn(c, s):
                     return get_corruption_loader(args.dataset, c, s, cfg["data_dir"],
@@ -133,11 +193,25 @@ def main():
                         row[f"acc_{c}_s{s}"]  = round(acc_c, 3)
                         row[f"drop_{c}_s{s}"] = round(acc_clean - acc_c, 3)
                         row[f"ece_{c}_s{s}"]  = round(ece(probs_c, lbls_c, ev_cfg["ece_bins"]), 5)
+
+                wandb.log({"mce": mce, **{f"mce_{g}": row[f"mce_{g}"] for g in CORRUPTION_GROUPS}})
+                wandb.log({f"drop/{c}": row[f"drop_{c}_s3"] for c in CORRUPTIONS})
+
+                log_corruption_comparison(model, args.dataset, cfg["data_dir"], ev_cfg, run)
             else:
                 row["mce"] = float("nan")
 
+            results_table.add_data(arch, label, acc_clean, top5_clean,
+                                    row.get("mce", float("nan")), ece_clean, latency, size, cr)
+
+            wandb.summary.update({k: v for k, v in row.items() if isinstance(v, (int, float))})
+            run.finish()
+
             rows.append(row)
             print(f"    acc_clean: {acc_clean:.2f}%  mCE: {row['mce']}  latency: {latency:.2f}ms  size: {size:.2f}MB")
+
+    summary_run.log({"results_table": results_table})
+    summary_run.finish()
 
     out_csv = os.path.join(cfg["results_dir"], f"{args.dataset}_results.csv")
     if rows:
