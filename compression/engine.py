@@ -1,7 +1,3 @@
-"""
-compression/engine.py
-Unified compression engine. All methods in one place.
-"""
 import copy
 import torch
 import torch.nn as nn
@@ -9,8 +5,6 @@ import torch.nn.utils.prune as prune
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import MultiStepLR, CosineAnnealingLR
 
-
-# ── Pruning ───────────────────────────────────────────────────────
 
 def _prunable_params(model):
     return [(m, "weight") for m in model.modules() if isinstance(m, (nn.Conv2d, nn.Linear))]
@@ -24,8 +18,7 @@ def apply_unstructured_pruning(model, sparsity):
 def apply_structured_pruning(model, sparsity):
     for module in model.modules():
         if isinstance(module, nn.Conv2d) and module.out_channels > 1:
-            n_prune = max(1, int(module.out_channels * sparsity))
-            prune.ln_structured(module, name="weight", amount=n_prune, n=1, dim=0)
+            prune.ln_structured(module, name="weight", amount=max(1, int(module.out_channels * sparsity)), n=1, dim=0)
         elif isinstance(module, nn.Linear):
             prune.l1_unstructured(module, name="weight", amount=sparsity)
     return model
@@ -50,39 +43,32 @@ def get_sparsity(model):
     return zeros / total if total > 0 else 0.0
 
 
-# ── Clustering ────────────────────────────────────────────────────
-
 def apply_clustering(model, n_clusters=16):
     with torch.no_grad():
         for m in model.modules():
             if isinstance(m, (nn.Conv2d, nn.Linear)):
-                w = m.weight.data.view(-1)
-                idx = torch.randperm(len(w))[:n_clusters]
-                centroids = w[idx].clone()
+                w         = m.weight.data.view(-1)
+                centroids = w[torch.randperm(len(w))[:n_clusters]].clone()
                 for _ in range(50):
-                    dists  = (w.unsqueeze(1) - centroids.unsqueeze(0)).abs()
-                    assign = dists.argmin(dim=1)
+                    assign = (w.unsqueeze(1) - centroids.unsqueeze(0)).abs().argmin(dim=1)
                     for k in range(n_clusters):
                         mask = assign == k
                         if mask.any():
                             centroids[k] = w[mask].mean()
-                dists  = (w.unsqueeze(1) - centroids.unsqueeze(0)).abs()
-                assign = dists.argmin(dim=1)
+                assign        = (w.unsqueeze(1) - centroids.unsqueeze(0)).abs().argmin(dim=1)
                 m.weight.data = centroids[assign].view(m.weight.shape)
     return model
 
 
-# ── Quantization ──────────────────────────────────────────────────
-
 def _prepare_ptq(model):
-    m = copy.deepcopy(model).cpu().eval()
+    m         = copy.deepcopy(model).cpu().eval()
     m.qconfig = torch.quantization.get_default_qconfig("x86")
     torch.quantization.prepare(m, inplace=True)
     return m
 
 
 def _prepare_qat(model):
-    m = copy.deepcopy(model).cpu().train()
+    m         = copy.deepcopy(model).cpu().train()
     m.qconfig = torch.quantization.get_default_qat_qconfig("x86")
     torch.quantization.prepare_qat(m, inplace=True)
     return m
@@ -103,18 +89,13 @@ def _convert_int8(model):
     return model
 
 
-# ── Training loops ────────────────────────────────────────────────
-
 def _train_loop(model, train_loader, val_loader, epochs, lr,
                 lr_milestones=None, lr_gamma=0.1, device="cpu", scheduler_type="cosine"):
     model.to(device)
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
-    if scheduler_type == "cosine":
-        scheduler = CosineAnnealingLR(optimizer, T_max=epochs)
-    else:
-        scheduler = MultiStepLR(optimizer, milestones=lr_milestones or [60, 80], gamma=lr_gamma)
+    scheduler = (CosineAnnealingLR(optimizer, T_max=epochs) if scheduler_type == "cosine"
+                 else MultiStepLR(optimizer, milestones=lr_milestones or [60, 80], gamma=lr_gamma))
     criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
-
     best_acc, best_state = 0.0, None
     for epoch in range(epochs):
         model.train()
@@ -134,7 +115,7 @@ def _train_loop(model, train_loader, val_loader, epochs, lr,
             acc = _quick_acc(model, val_loader, device)
             print(f"    epoch [{epoch+1}/{epochs}]  val_acc: {acc:.2f}%")
             if acc > best_acc:
-                best_acc = acc
+                best_acc   = acc
                 best_state = copy.deepcopy(model.state_dict())
     if best_state:
         model.load_state_dict(best_state)
@@ -146,20 +127,14 @@ def _quick_acc(model, loader, device):
     correct = total = 0
     with torch.no_grad():
         for x, y in loader:
-            preds = model(x.to(device)).argmax(1).cpu()
+            preds    = model(x.to(device)).argmax(1).cpu()
             correct += (preds == y).sum().item()
             total   += y.size(0)
     return 100.0 * correct / total
 
 
-# ── Knowledge Distillation ────────────────────────────────────────
-
 def _kd_loss(s_logits, t_logits, labels, T, alpha):
-    soft = F.kl_div(
-        F.log_softmax(s_logits / T, 1),
-        F.softmax(t_logits / T, 1),
-        reduction="batchmean",
-    ) * T ** 2
+    soft = F.kl_div(F.log_softmax(s_logits / T, 1), F.softmax(t_logits / T, 1), reduction="batchmean") * T ** 2
     hard = F.cross_entropy(s_logits, labels, label_smoothing=0.1)
     return alpha * soft + (1 - alpha) * hard
 
@@ -171,8 +146,8 @@ def train_kd(student, teacher, train_loader, val_loader,
     for p in teacher.parameters():
         p.requires_grad_(False)
     student.to(device)
-    optimizer = torch.optim.SGD(student.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
-    scheduler = MultiStepLR(optimizer, milestones=lr_milestones or [60, 80], gamma=lr_gamma)
+    optimizer    = torch.optim.SGD(student.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
+    scheduler    = MultiStepLR(optimizer, milestones=lr_milestones or [60, 80], gamma=lr_gamma)
     best_acc, best_state = 0.0, None
     for epoch in range(epochs):
         student.train()
@@ -187,14 +162,12 @@ def train_kd(student, teacher, train_loader, val_loader,
             acc = _quick_acc(student, val_loader, device)
             print(f"    KD epoch [{epoch+1}/{epochs}]  val_acc: {acc:.2f}%")
             if acc > best_acc:
-                best_acc = acc
+                best_acc   = acc
                 best_state = copy.deepcopy(student.state_dict())
     if best_state:
         student.load_state_dict(best_state)
     return student
 
-
-# ── Main compress() entry point ───────────────────────────────────
 
 def compress(model, method, cfg, train_loader, val_loader, calibration_loader, device="cuda"):
     m = copy.deepcopy(model)
@@ -209,23 +182,19 @@ def compress(model, method, cfg, train_loader, val_loader, calibration_loader, d
         apply_unstructured_pruning(m, cfg["sparsity"])
         print(f"  Actual sparsity: {get_sparsity(m):.1%}")
         m = _train_loop(m, train_loader, val_loader, cfg["fine_tune_epochs"], cfg["fine_tune_lr"], device=device)
-        remove_masks(m)
-        return m, False
+        return remove_masks(m), False
 
     if method == "structured_pruning":
         apply_structured_pruning(m, cfg["sparsity"])
         m = _train_loop(m, train_loader, val_loader, cfg["fine_tune_epochs"], cfg["fine_tune_lr"], device=device)
-        remove_masks(m)
-        return m, False
+        return remove_masks(m), False
 
     if method == "ptq":
-        m.cpu()
         prepared = _prepare_ptq(m)
         _calibrate(prepared, calibration_loader, cfg.get("calibration_batches", 32))
         return _convert_int8(prepared), True
 
     if method in ("qat", "qat_then_convert"):
-        m.cpu()
         qat_m = _prepare_qat(m)
         qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["epochs"], cfg["lr"], device="cpu")
         return _convert_int8(qat_m), True
@@ -234,7 +203,6 @@ def compress(model, method, cfg, train_loader, val_loader, calibration_loader, d
         apply_unstructured_pruning(m, cfg["sparsity"])
         m = _train_loop(m, train_loader, val_loader, cfg["fine_tune_epochs"], cfg["fine_tune_lr"], device=device)
         remove_masks(m)
-        m.cpu()
         prepared = _prepare_ptq(m)
         _calibrate(prepared, calibration_loader, cfg.get("calibration_batches", 32))
         return _convert_int8(prepared), True
@@ -243,7 +211,6 @@ def compress(model, method, cfg, train_loader, val_loader, calibration_loader, d
         apply_unstructured_pruning(m, cfg["sparsity"])
         m = _train_loop(m, train_loader, val_loader, cfg["fine_tune_epochs"], cfg["fine_tune_lr"], device=device)
         remove_masks(m)
-        m.cpu()
         qat_m = _prepare_qat(m)
         qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["qat_epochs"], cfg["qat_lr"], device="cpu")
         return _convert_int8(qat_m), True
@@ -252,23 +219,20 @@ def compress(model, method, cfg, train_loader, val_loader, calibration_loader, d
         student = copy.deepcopy(model)
         apply_unstructured_pruning(student, cfg["sparsity"])
         remove_masks(student)
-        student = train_kd(
+        return train_kd(
             student, model, train_loader, val_loader,
             epochs=cfg["epochs"], lr=cfg["lr"],
             lr_milestones=cfg.get("lr_milestones", [60, 80]),
             lr_gamma=cfg.get("lr_gamma", 0.1),
             temperature=cfg["kd_temperature"], alpha=cfg["kd_alpha"],
             device=device,
-        )
-        return student, False
+        ), False
 
     if method == "clustering":
-        apply_clustering(m, cfg.get("n_clusters", 16))
-        return m.to(device), False
+        return apply_clustering(m, cfg.get("n_clusters", 16)).to(device), False
 
     if method == "clustering_then_ptq":
         apply_clustering(m, cfg.get("n_clusters", 16))
-        m.cpu()
         prepared = _prepare_ptq(m)
         _calibrate(prepared, calibration_loader, cfg.get("calibration_batches", 32))
         return _convert_int8(prepared), True
@@ -279,7 +243,6 @@ def compress(model, method, cfg, train_loader, val_loader, calibration_loader, d
         remove_masks(m)
         apply_clustering(m, cfg.get("n_clusters", 16))
         if method.endswith("_ptq"):
-            m.cpu()
             prepared = _prepare_ptq(m)
             _calibrate(prepared, calibration_loader, cfg.get("calibration_batches", 32))
             return _convert_int8(prepared), True
@@ -287,7 +250,6 @@ def compress(model, method, cfg, train_loader, val_loader, calibration_loader, d
 
     if method in ("cqat", "cqat_then_convert"):
         apply_clustering(m, cfg.get("n_clusters", 16))
-        m.cpu()
         qat_m = _prepare_qat(m)
         qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["epochs"], cfg["lr"], device="cpu")
         return _convert_int8(qat_m), True
@@ -296,7 +258,6 @@ def compress(model, method, cfg, train_loader, val_loader, calibration_loader, d
         apply_unstructured_pruning(m, cfg["sparsity"])
         m = _train_loop(m, train_loader, val_loader, cfg.get("fine_tune_epochs", 10), cfg.get("fine_tune_lr", 0.01), device=device)
         remove_masks(m)
-        m.cpu()
         qat_m = _prepare_qat(m)
         qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["epochs"], cfg["lr"], device="cpu")
         return _convert_int8(qat_m), True
@@ -306,7 +267,6 @@ def compress(model, method, cfg, train_loader, val_loader, calibration_loader, d
         m = _train_loop(m, train_loader, val_loader, cfg.get("fine_tune_epochs", 10), cfg.get("fine_tune_lr", 0.01), device=device)
         remove_masks(m)
         apply_clustering(m, cfg.get("n_clusters", 16))
-        m.cpu()
         qat_m = _prepare_qat(m)
         qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["epochs"], cfg["lr"], device="cpu")
         return _convert_int8(qat_m), True
