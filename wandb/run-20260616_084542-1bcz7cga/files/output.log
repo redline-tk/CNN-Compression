@@ -1,0 +1,111 @@
+/home/redline/files/CNN-Compression/train.py:102: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler    = torch.cuda.amp.GradScaler() if (cfg.get("mixed_precision") and device == "cuda") else None
+/home/redline/files/CNN-Compression/train.py:115: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+  [resnet20|cifar100] epoch 1/100  loss: 4.4157  train_acc: 3.86%  val_acc: 5.14%
+  [resnet20|cifar100] epoch 2/100  loss: 4.1500  train_acc: 7.92%  val_acc: 10.82%
+  [resnet20|cifar100] epoch 3/100  loss: 3.9485  train_acc: 11.86%  val_acc: 14.40%
+  [resnet20|cifar100] epoch 4/100  loss: 3.7264  train_acc: 16.49%  val_acc: 22.96%
+  [resnet20|cifar100] epoch 5/100  loss: 3.4925  train_acc: 21.24%  val_acc: 24.28%
+  [resnet20|cifar100] epoch 6/100  loss: 3.3088  train_acc: 25.57%  val_acc: 28.49%
+  [resnet20|cifar100] epoch 7/100  loss: 3.1792  train_acc: 28.52%  val_acc: 29.30%
+  [resnet20|cifar100] epoch 8/100  loss: 3.0816  train_acc: 31.19%  val_acc: 36.97%
+  [resnet20|cifar100] epoch 9/100  loss: 2.9899  train_acc: 33.67%  val_acc: 35.45%
+  [resnet20|cifar100] epoch 10/100  loss: 2.9273  train_acc: 35.64%  val_acc: 37.76%
+  [resnet20|cifar100] epoch 11/100  loss: 2.8720  train_acc: 37.09%  val_acc: 36.64%
+  [resnet20|cifar100] epoch 12/100  loss: 2.8299  train_acc: 38.12%  val_acc: 39.75%
+  [resnet20|cifar100] epoch 13/100  loss: 2.7830  train_acc: 39.50%  val_acc: 41.62%
+  [resnet20|cifar100] epoch 14/100  loss: 2.7677  train_acc: 40.02%  val_acc: 38.52%
+  [resnet20|cifar100] epoch 15/100  loss: 2.7294  train_acc: 41.07%  val_acc: 42.55%
+  [resnet20|cifar100] epoch 16/100  loss: 2.7057  train_acc: 41.84%  val_acc: 43.20%
+  [resnet20|cifar100] epoch 17/100  loss: 2.6792  train_acc: 42.36%  val_acc: 44.30%
+  [resnet20|cifar100] epoch 18/100  loss: 2.6557  train_acc: 43.01%  val_acc: 44.21%
+  [resnet20|cifar100] epoch 19/100  loss: 2.6476  train_acc: 43.51%  val_acc: 39.27%
+  [resnet20|cifar100] epoch 20/100  loss: 2.6213  train_acc: 44.00%  val_acc: 42.70%
+  [resnet20|cifar100] epoch 21/100  loss: 2.6198  train_acc: 44.45%  val_acc: 43.99%
+  [resnet20|cifar100] epoch 22/100  loss: 2.5992  train_acc: 44.97%  val_acc: 39.51%
+  [resnet20|cifar100] epoch 23/100  loss: 2.5861  train_acc: 45.28%  val_acc: 44.38%
+  [resnet20|cifar100] epoch 24/100  loss: 2.5734  train_acc: 45.80%  val_acc: 45.65%
+  [resnet20|cifar100] epoch 25/100  loss: 2.5641  train_acc: 46.10%  val_acc: 43.45%
+  [resnet20|cifar100] epoch 26/100  loss: 2.5599  train_acc: 45.92%  val_acc: 44.41%
+  [resnet20|cifar100] epoch 27/100  loss: 2.5514  train_acc: 46.02%  val_acc: 46.20%
+  [resnet20|cifar100] epoch 28/100  loss: 2.5438  train_acc: 46.47%  val_acc: 45.40%
+  [resnet20|cifar100] epoch 29/100  loss: 2.5264  train_acc: 47.25%  val_acc: 45.51%
+  [resnet20|cifar100] epoch 30/100  loss: 2.5221  train_acc: 47.10%  val_acc: 47.22%
+  [resnet20|cifar100] epoch 31/100  loss: 2.5137  train_acc: 47.53%  val_acc: 48.96%
+  [resnet20|cifar100] epoch 32/100  loss: 2.5195  train_acc: 47.37%  val_acc: 47.31%
+  [resnet20|cifar100] epoch 33/100  loss: 2.5078  train_acc: 47.96%  val_acc: 47.91%
+  [resnet20|cifar100] epoch 34/100  loss: 2.5106  train_acc: 47.68%  val_acc: 45.09%
+  [resnet20|cifar100] epoch 35/100  loss: 2.4965  train_acc: 47.94%  val_acc: 47.75%
+  [resnet20|cifar100] epoch 36/100  loss: 2.4881  train_acc: 48.28%  val_acc: 39.79%
+  [resnet20|cifar100] epoch 37/100  loss: 2.4879  train_acc: 48.29%  val_acc: 49.52%
+  [resnet20|cifar100] epoch 38/100  loss: 2.4810  train_acc: 48.44%  val_acc: 48.35%
+  [resnet20|cifar100] epoch 39/100  loss: 2.4713  train_acc: 48.75%  val_acc: 45.10%
+  [resnet20|cifar100] epoch 40/100  loss: 2.4679  train_acc: 48.67%  val_acc: 46.81%
+  [resnet20|cifar100] epoch 41/100  loss: 2.4640  train_acc: 48.99%  val_acc: 40.34%
+  [resnet20|cifar100] epoch 42/100  loss: 2.4684  train_acc: 48.79%  val_acc: 47.29%
+  [resnet20|cifar100] epoch 43/100  loss: 2.4595  train_acc: 48.90%  val_acc: 47.29%
+  [resnet20|cifar100] epoch 44/100  loss: 2.4601  train_acc: 49.23%  val_acc: 47.08%
+  [resnet20|cifar100] epoch 45/100  loss: 2.4436  train_acc: 49.48%  val_acc: 47.16%
+  [resnet20|cifar100] epoch 46/100  loss: 2.4643  train_acc: 48.92%  val_acc: 49.18%
+  [resnet20|cifar100] epoch 47/100  loss: 2.4544  train_acc: 49.01%  val_acc: 47.27%
+  [resnet20|cifar100] epoch 48/100  loss: 2.4349  train_acc: 49.93%  val_acc: 51.43%
+  [resnet20|cifar100] epoch 49/100  loss: 2.4469  train_acc: 49.42%  val_acc: 45.59%
+  [resnet20|cifar100] epoch 50/100  loss: 2.4474  train_acc: 49.22%  val_acc: 46.04%
+  [resnet20|cifar100] epoch 51/100  loss: 2.4535  train_acc: 49.12%  val_acc: 50.49%
+  [resnet20|cifar100] epoch 52/100  loss: 2.4365  train_acc: 49.86%  val_acc: 46.57%
+  [resnet20|cifar100] epoch 53/100  loss: 2.4337  train_acc: 49.81%  val_acc: 48.89%
+  [resnet20|cifar100] epoch 54/100  loss: 2.4345  train_acc: 50.06%  val_acc: 48.34%
+  [resnet20|cifar100] epoch 55/100  loss: 2.4288  train_acc: 49.74%  val_acc: 47.44%
+  [resnet20|cifar100] epoch 56/100  loss: 2.4352  train_acc: 49.90%  val_acc: 46.63%
+  [resnet20|cifar100] epoch 57/100  loss: 2.4315  train_acc: 49.90%  val_acc: 50.70%
+  [resnet20|cifar100] epoch 58/100  loss: 2.4269  train_acc: 50.18%  val_acc: 49.19%
+  [resnet20|cifar100] epoch 59/100  loss: 2.4239  train_acc: 50.18%  val_acc: 50.89%
+[34m[1mwandb[0m: [33mWARNING[0m Fatal error while uploading data. Some run data will not be synced, but it will still be written to disk. Use `wandb sync` at the end of the run to try uploading.
+  [resnet20|cifar100] epoch 60/100  loss: 2.4223  train_acc: 50.29%  val_acc: 51.92%
+  [resnet20|cifar100] epoch 61/100  loss: 2.2106  train_acc: 56.98%  val_acc: 63.51%
+  [resnet20|cifar100] epoch 62/100  loss: 2.1377  train_acc: 59.31%  val_acc: 63.76%
+  [resnet20|cifar100] epoch 63/100  loss: 2.1140  train_acc: 59.89%  val_acc: 63.87%
+  [resnet20|cifar100] epoch 64/100  loss: 2.1029  train_acc: 60.36%  val_acc: 64.53%
+  [resnet20|cifar100] epoch 65/100  loss: 2.0852  train_acc: 60.79%  val_acc: 64.79%
+  [resnet20|cifar100] epoch 66/100  loss: 2.0716  train_acc: 61.11%  val_acc: 64.65%
+Traceback (most recent call last):
+  File "/home/redline/files/CNN-Compression/train.py", line 247, in <module>
+    main()
+  File "/home/redline/files/CNN-Compression/train.py", line 239, in main
+    train_baseline(arch, args.dataset, cfg, device)
+  File "/home/redline/files/CNN-Compression/train.py", line 116, in train_baseline
+    out  = model(x)
+  File "/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/redline/files/CNN-Compression/models/registry.py", line 51, in forward
+    x = self.layer2(x)
+  File "/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/redline/files/CNN-Compression/models/registry.py", line 24, in forward
+    out += self.shortcut(x)
+  File "/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torch/nn/modules/conv.py", line 553, in forward
+    return self._conv_forward(input, self.weight, self.bias)
+  File "/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torch/nn/modules/conv.py", line 548, in _conv_forward
+    return F.conv2d(
+KeyboardInterrupt

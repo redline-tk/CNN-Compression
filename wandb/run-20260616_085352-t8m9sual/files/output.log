@@ -1,0 +1,6 @@
+/home/redline/files/CNN-Compression/train.py:102: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler    = torch.cuda.amp.GradScaler() if (cfg.get("mixed_precision") and device == "cuda") else None
+/home/redline/files/CNN-Compression/train.py:115: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+  [resnet20|cifar10] epoch 1/100  loss: 1.9473  train_acc: 31.22%  val_acc: 43.23%
+  [resnet20|cifar10] epoch 2/100  loss: 1.5865  train_acc: 50.31%  val_acc: 54.29%

@@ -1,0 +1,53 @@
+{
+  "os":  "Linux-6.8.0-124-generic-x86_64-with-glibc2.39",
+  "python":  "CPython 3.10.20",
+  "startedAt":  "2026-06-16T08:37:29.088147Z",
+  "args":  [
+    "--phase",
+    "baseline",
+    "--dataset",
+    "cifar10"
+  ],
+  "program":  "/home/redline/files/CNN-Compression/train.py",
+  "codePath":  "train.py",
+  "codePathLocal":  "train.py",
+  "git":  {
+    "remote":  "https://github.com/redline-tk/CNN-Compression.git",
+    "commit":  "fcffbce274c9208768b7729334fdc471607ef21a"
+  },
+  "email":  "tea.krcmar@gmail.com",
+  "root":  "/home/redline/files/CNN-Compression",
+  "host":  "ssu",
+  "executable":  "/home/redline/.conda/envs/chad_new/bin/python",
+  "cpu_count":  128,
+  "cpu_count_logical":  256,
+  "gpu":  "NVIDIA H100 NVL",
+  "gpu_count":  2,
+  "disk":  {
+    "/":  {
+      "total":  "3146565476352",
+      "used":  "1026856972288"
+    }
+  },
+  "memory":  {
+    "total":  "2151588184064"
+  },
+  "gpu_nvidia":  [
+    {
+      "name":  "NVIDIA H100 NVL",
+      "memoryTotal":  "100485038080",
+      "cudaCores":  16896,
+      "architecture":  "Hopper",
+      "uuid":  "GPU-100d9764-021e-a623-51d2-628cced57144"
+    },
+    {
+      "name":  "NVIDIA H100 NVL",
+      "memoryTotal":  "100485038080",
+      "cudaCores":  16896,
+      "architecture":  "Hopper",
+      "uuid":  "GPU-a579e151-faf1-319d-ae20-ec2ac7d83874"
+    }
+  ],
+  "cudaVersion":  "13.2",
+  "writerId":  "kb65108z7v1d32a70bbgixv93rr36b3a"
+}

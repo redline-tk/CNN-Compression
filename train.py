@@ -36,27 +36,22 @@ def ckpt_path(cfg, dataset, arch, config_id, is_quantized=False):
     return os.path.join(cfg["checkpoints_dir"], dataset, arch, f"{config_id}{ext}")
 
 
-def log_sample_images(loader, dataset, run, n=8):
-    CIFAR10_CLASSES  = ["airplane","automobile","bird","cat","deer","dog","frog","horse","ship","truck"]
-    CIFAR100_CLASSES = [str(i) for i in range(100)]
-    classes = CIFAR10_CLASSES if dataset == "cifar10" else CIFAR100_CLASSES
-
-    MEAN = torch.tensor([0.4914, 0.4822, 0.4465] if dataset == "cifar10" else [0.5071, 0.4867, 0.4408]).view(3,1,1)
-    STD  = torch.tensor([0.2023, 0.1994, 0.2010] if dataset == "cifar10" else [0.2675, 0.2565, 0.2761]).view(3,1,1)
+def log_sample_images(loader, dataset, n=8):
+    CLASSES = ["airplane","automobile","bird","cat","deer","dog","frog","horse","ship","truck"] if dataset == "cifar10" else [str(i) for i in range(100)]
+    MEAN    = torch.tensor([0.4914, 0.4822, 0.4465] if dataset == "cifar10" else [0.5071, 0.4867, 0.4408]).view(3,1,1)
+    STD     = torch.tensor([0.2023, 0.1994, 0.2010] if dataset == "cifar10" else [0.2675, 0.2565, 0.2761]).view(3,1,1)
 
     images, labels = next(iter(loader))
-    images = images[:n]
-    labels = labels[:n]
-
-    imgs_denorm = torch.clamp(images * STD + MEAN, 0, 1)
-    logged = []
-    for img, lbl in zip(imgs_denorm, labels):
-        np_img = (img.permute(1,2,0).numpy() * 255).astype("uint8")
-        logged.append(wandb.Image(np_img, caption=classes[lbl.item()]))
-    run.log({"sample_images": logged})
+    images         = images[:n]
+    imgs_denorm    = torch.clamp(images * STD + MEAN, 0, 1)
+    logged         = [
+        wandb.Image((img.permute(1,2,0).numpy() * 255).astype("uint8"), caption=CLASSES[lbl.item()])
+        for img, lbl in zip(imgs_denorm, labels[:n])
+    ]
+    wandb.log({"sample_images/clean": logged}, commit=False)
 
 
-def log_corruption_samples(dataset, data_dir, run, n=5):
+def log_corruption_samples(dataset, data_dir, n=5):
     from data.loaders import CORRUPTIONS, get_corruption_loader
     MEAN = torch.tensor([0.4914, 0.4822, 0.4465] if dataset == "cifar10" else [0.5071, 0.4867, 0.4408]).view(3,1,1)
     STD  = torch.tensor([0.2023, 0.1994, 0.2010] if dataset == "cifar10" else [0.2675, 0.2565, 0.2761]).view(3,1,1)
@@ -65,35 +60,35 @@ def log_corruption_samples(dataset, data_dir, run, n=5):
         logged = []
         for severity in [1, 3, 5]:
             try:
-                loader = get_corruption_loader(dataset, corruption, severity, data_dir, batch_size=n, num_workers=2)
-                images, labels = next(iter(loader))
-                images = images[:n]
-                imgs_denorm = torch.clamp(images * STD + MEAN, 0, 1)
-                for img, lbl in zip(imgs_denorm, labels):
+                loader      = get_corruption_loader(dataset, corruption, severity, data_dir, batch_size=n, num_workers=2)
+                images, lbls = next(iter(loader))
+                imgs_denorm = torch.clamp(images[:n] * STD + MEAN, 0, 1)
+                for img, lbl in zip(imgs_denorm, lbls):
                     np_img = (img.permute(1,2,0).numpy() * 255).astype("uint8")
-                    logged.append(wandb.Image(np_img, caption=f"severity={severity} label={lbl.item()}"))
+                    logged.append(wandb.Image(np_img, caption=f"sev={severity} cls={lbl.item()}"))
             except Exception:
                 pass
         if logged:
-            run.log({f"corruptions/{corruption}": logged})
+            wandb.log({f"sample_images/corruption/{corruption}": logged}, commit=False)
+    wandb.log({}, commit=True)
 
 
 def train_baseline(arch, dataset, cfg, device):
-    num_classes          = 10 if dataset == "cifar10" else 100
-    t_cfg                = cfg["training"]
+    num_classes              = 10 if dataset == "cifar10" else 100
+    t_cfg                    = cfg["training"]
     train_loader, val_loader = get_loaders(dataset, cfg["data_dir"],
                                             batch_size=t_cfg["batch_size"],
                                             num_workers=cfg["num_workers"])
 
-    run = wandb.init(
+    wandb.init(
         project=cfg.get("wandb_project", "CNN-Compression"),
         name=f"{arch}_{dataset}_baseline",
         config={"arch": arch, "dataset": dataset, "compression": "baseline", **t_cfg},
         reinit=True,
     )
 
-    log_sample_images(train_loader, dataset, run)
-    log_corruption_samples(dataset, cfg["data_dir"], run)
+    log_sample_images(train_loader, dataset)
+    log_corruption_samples(dataset, cfg["data_dir"])
 
     model = get_model(arch, num_classes=num_classes)
     if torch.cuda.device_count() > 1 and device == "cuda":
@@ -106,13 +101,13 @@ def train_baseline(arch, dataset, cfg, device):
     criterion = nn.CrossEntropyLoss(label_smoothing=t_cfg.get("label_smoothing", 0.0))
     scaler    = torch.cuda.amp.GradScaler() if (cfg.get("mixed_precision") and device == "cuda") else None
 
-    wandb.watch(model, log="gradients", log_freq=100)
-
     best_acc, best_state = 0.0, None
+
     for epoch in range(t_cfg["epochs"]):
         model.train()
-        running_loss = 0.0
-        correct = total = 0
+        running_loss    = 0.0
+        train_correct   = train_total = 0
+
         for x, y in train_loader:
             x, y = x.to(device), y.to(device)
             optimizer.zero_grad()
@@ -128,13 +123,13 @@ def train_baseline(arch, dataset, cfg, device):
                 loss = criterion(out, y)
                 loss.backward()
                 optimizer.step()
-            running_loss += loss.item()
-            preds    = out.argmax(1)
-            correct += (preds == y).sum().item()
-            total   += y.size(0)
+            running_loss  += loss.item()
+            train_correct += (out.argmax(1) == y).sum().item()
+            train_total   += y.size(0)
+
         scheduler.step()
 
-        train_acc  = 100.0 * correct / total
+        train_acc  = 100.0 * train_correct / train_total
         train_loss = running_loss / len(train_loader)
 
         m_eval = model.module if isinstance(model, nn.DataParallel) else model
@@ -153,7 +148,7 @@ def train_baseline(arch, dataset, cfg, device):
             "train/acc":  train_acc,
             "val/acc":    val_acc,
             "lr":         scheduler.get_last_lr()[0],
-        })
+        }, commit=True)
 
         print(f"  [{arch}|{dataset}] epoch {epoch+1}/{t_cfg['epochs']}  loss: {train_loss:.4f}  train_acc: {train_acc:.2f}%  val_acc: {val_acc:.2f}%")
 
@@ -166,9 +161,9 @@ def train_baseline(arch, dataset, cfg, device):
     out_path = ckpt_path(cfg, dataset, arch, "baseline")
     save_model(m_final, out_path, is_quantized=False)
 
-    wandb.summary["best_val_acc"] = best_acc
+    wandb.summary["best_val_acc"]  = best_acc
     wandb.summary["model_size_mb"] = os.path.getsize(out_path) / 1e6
-    run.finish()
+    wandb.finish()
     print(f"  Best val_acc: {best_acc:.2f}%")
     return m_final
 
@@ -184,11 +179,11 @@ def load_baseline(arch, dataset, cfg, device):
 
 
 def run_compression(arch, dataset, phase_configs, cfg, device):
-    baseline             = load_baseline(arch, dataset, cfg, device)
+    baseline                 = load_baseline(arch, dataset, cfg, device)
     train_loader, val_loader = get_loaders(dataset, cfg["data_dir"],
                                             batch_size=cfg["training"]["batch_size"],
                                             num_workers=cfg["num_workers"])
-    cal_loader           = get_calibration_loader(dataset, cfg["data_dir"], num_workers=cfg["num_workers"])
+    cal_loader               = get_calibration_loader(dataset, cfg["data_dir"], num_workers=cfg["num_workers"])
 
     for comp_cfg in phase_configs:
         cid    = comp_cfg["id"]
@@ -197,7 +192,7 @@ def run_compression(arch, dataset, phase_configs, cfg, device):
             continue
         print(f"\n  -- [{arch}|{dataset}] {comp_cfg['label']} --")
 
-        run = wandb.init(
+        wandb.init(
             project=cfg.get("wandb_project", "CNN-Compression"),
             name=f"{arch}_{dataset}_{cid}",
             config={"arch": arch, "dataset": dataset, "compression": cid, **comp_cfg},
@@ -208,9 +203,9 @@ def run_compression(arch, dataset, phase_configs, cfg, device):
         out_path         = ckpt_path(cfg, dataset, arch, cid, is_quantized=is_q)
         save_model(compressed, out_path, is_quantized=is_q)
 
-        wandb.summary["model_size_mb"]    = os.path.getsize(out_path) / 1e6
-        wandb.summary["is_quantized"]     = is_q
-        run.finish()
+        wandb.summary["model_size_mb"] = os.path.getsize(out_path) / 1e6
+        wandb.summary["is_quantized"]  = is_q
+        wandb.finish()
 
 
 def main():
@@ -220,7 +215,7 @@ def main():
     parser.add_argument("--arch",    default=None)
     parser.add_argument("--phase",   default="baseline",
                         choices=["baseline", "phase1", "phase2", "phase3", "all"])
-    args   = parser.parse_args()
+    args = parser.parse_args()
 
     with open(args.config) as f:
         cfg = yaml.safe_load(f)

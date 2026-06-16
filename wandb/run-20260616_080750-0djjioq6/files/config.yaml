@@ -1,0 +1,91 @@
+_wandb:
+    value:
+        cli_version: 0.26.1
+        e:
+            qckoiii1z0lbi0k59zvnln3tipood7l4:
+                args:
+                    - --phase
+                    - baseline
+                    - --dataset
+                    - cifar10
+                codePath: train.py
+                codePathLocal: train.py
+                cpu_count: 128
+                cpu_count_logical: 256
+                cudaVersion: "13.2"
+                disk:
+                    /:
+                        total: "3146565476352"
+                        used: "1026693120000"
+                email: tea.krcmar@gmail.com
+                executable: /home/redline/.conda/envs/chad_new/bin/python
+                git:
+                    commit: fcffbce274c9208768b7729334fdc471607ef21a
+                    remote: https://github.com/redline-tk/CNN-Compression.git
+                gpu: NVIDIA H100 NVL
+                gpu_count: 2
+                gpu_nvidia:
+                    - architecture: Hopper
+                      cudaCores: 16896
+                      memoryTotal: "100485038080"
+                      name: NVIDIA H100 NVL
+                      uuid: GPU-100d9764-021e-a623-51d2-628cced57144
+                    - architecture: Hopper
+                      cudaCores: 16896
+                      memoryTotal: "100485038080"
+                      name: NVIDIA H100 NVL
+                      uuid: GPU-a579e151-faf1-319d-ae20-ec2ac7d83874
+                host: ssu
+                memory:
+                    total: "2151588184064"
+                os: Linux-6.8.0-124-generic-x86_64-with-glibc2.39
+                program: /home/redline/files/CNN-Compression/train.py
+                python: CPython 3.10.20
+                root: /home/redline/files/CNN-Compression
+                startedAt: "2026-06-16T08:07:50.747812Z"
+                writerId: qckoiii1z0lbi0k59zvnln3tipood7l4
+        m: []
+        python_version: 3.10.20
+        t:
+            "1":
+                - 1
+                - 41
+            "2":
+                - 1
+                - 41
+            "3":
+                - 1
+                - 2
+                - 13
+                - 16
+                - 62
+            "4": 3.10.20
+            "5": 0.26.1
+            "10":
+                - 20
+            "12": 0.26.1
+            "13": linux-x86_64
+arch:
+    value: resnet20
+batch_size:
+    value: 256
+compression:
+    value: baseline
+dataset:
+    value: cifar10
+epochs:
+    value: 100
+label_smoothing:
+    value: 0.1
+lr:
+    value: 0.1
+lr_gamma:
+    value: 0.1
+lr_milestones:
+    value:
+        - 60
+        - 80
+momentum:
+    value: 0.9
+weight_decay:
+    value: 0.0005
