@@ -54,7 +54,7 @@ class ResNet20(nn.Module):
 
 
 def _build_resnet50(num_classes):
-    m = tvm.resnet50(weights=None)
+    m         = tvm.resnet50(weights=None)
     m.conv1   = nn.Conv2d(3, 64, 3, stride=1, padding=1, bias=False)
     m.maxpool = nn.Identity()
     m.fc      = nn.Linear(m.fc.in_features, num_classes)
@@ -62,7 +62,7 @@ def _build_resnet50(num_classes):
 
 
 def _build_vgg19(num_classes):
-    m = tvm.vgg19_bn(weights=None)
+    m            = tvm.vgg19_bn(weights=None)
     m.avgpool    = nn.AdaptiveAvgPool2d((1, 1))
     m.classifier = nn.Sequential(
         nn.Linear(512, 512),
@@ -74,24 +74,24 @@ def _build_vgg19(num_classes):
 
 
 def _build_mobilenetv2(num_classes):
-    m = tvm.mobilenet_v2(weights=None)
-    m.features[0][0] = nn.Conv2d(3, 32, 3, stride=1, padding=1, bias=False)
-    m.classifier[-1] = nn.Linear(m.last_channel, num_classes)
+    m                 = tvm.mobilenet_v2(weights=None)
+    m.features[0][0]  = nn.Conv2d(3, 32, 3, stride=1, padding=1, bias=False)
+    m.classifier[-1]  = nn.Linear(m.last_channel, num_classes)
     return m
 
 
 def _build_efficientnet_b0(num_classes):
-    m  = tvm.efficientnet_b0(weights=None)
-    fc = m.features[0][0]
-    m.features[0][0]  = nn.Conv2d(fc.in_channels, fc.out_channels, 3, stride=1, padding=1, bias=False)
-    m.classifier[-1]  = nn.Linear(m.classifier[-1].in_features, num_classes)
+    m                = tvm.efficientnet_b0(weights=None)
+    fc               = m.features[0][0]
+    m.features[0][0] = nn.Conv2d(fc.in_channels, fc.out_channels, 3, stride=1, padding=1, bias=False)
+    m.classifier[-1] = nn.Linear(m.classifier[-1].in_features, num_classes)
     return m
 
 
 def _build_convnext_tiny(num_classes):
-    m      = tvm.convnext_tiny(weights=None)
-    in_ch  = m.features[0][0].in_channels
-    out_ch = m.features[0][0].out_channels
+    m                = tvm.convnext_tiny(weights=None)
+    in_ch            = m.features[0][0].in_channels
+    out_ch           = m.features[0][0].out_channels
     m.features[0][0] = nn.Conv2d(in_ch, out_ch, 3, stride=1, padding=1)
     m.features[0][1] = nn.LayerNorm([out_ch, 32, 32])
     m.classifier[-1] = nn.Linear(m.classifier[-1].in_features, num_classes)
