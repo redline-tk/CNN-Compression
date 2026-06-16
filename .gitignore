@@ -7,3 +7,4 @@ results/*.csv
 results/*.png
 *.egg-info/
 .env
+wandb/
