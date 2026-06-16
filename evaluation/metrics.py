@@ -1,12 +1,7 @@
-"""
-evaluation/metrics.py
-All evaluation metrics: accuracy, ECE, mCE, latency, model size.
-"""
 import os
 import time
 import numpy as np
 import torch
-import torch.nn as nn
 
 
 @torch.no_grad()
@@ -14,8 +9,7 @@ def collect(model, loader, device="cpu"):
     all_probs, all_labels = [], []
     model.eval().to(device)
     for x, y in loader:
-        logits = model(x.to(device))
-        all_probs.append(torch.softmax(logits, dim=1).cpu())
+        all_probs.append(torch.softmax(model(x.to(device)), dim=1).cpu())
         all_labels.append(y)
     return torch.cat(all_probs), torch.cat(all_labels)
 
@@ -25,16 +19,14 @@ def accuracy(probs, labels):
 
 
 def top5_accuracy(probs, labels):
-    top5  = probs.topk(5, dim=1).indices
-    match = top5.eq(labels.unsqueeze(1)).any(1)
-    return 100.0 * match.float().mean().item()
+    return 100.0 * probs.topk(5, dim=1).indices.eq(labels.unsqueeze(1)).any(1).float().mean().item()
 
 
 def ece(probs, labels, n_bins=15):
     confs, preds = probs.max(dim=1)
-    accs = preds.eq(labels).float()
-    bins = torch.linspace(0, 1, n_bins + 1)
-    ece_val = 0.0
+    accs         = preds.eq(labels).float()
+    bins         = torch.linspace(0, 1, n_bins + 1)
+    ece_val      = 0.0
     for lo, hi in zip(bins[:-1], bins[1:]):
         mask = (confs > lo) & (confs <= hi)
         if mask.sum() > 0:
@@ -43,32 +35,27 @@ def ece(probs, labels, n_bins=15):
 
 
 def compute_baseline_errors(model, corruption_loader_fn, corruptions, severities=None, device="cpu"):
-    if severities is None:
-        severities = [1, 2, 3, 4, 5]
-    errors = {}
+    severities = severities or [1, 2, 3, 4, 5]
+    errors     = {}
     for c in corruptions:
         for s in severities:
-            loader = corruption_loader_fn(c, s)
-            probs, labels = collect(model, loader, device=device)
+            probs, labels  = collect(model, corruption_loader_fn(c, s), device=device)
             errors[(c, s)] = 1.0 - accuracy(probs, labels) / 100.0
     return errors
 
 
 def corruption_error(model, corruption_loader_fn, baseline_errors, corruptions, severities=None, device="cpu"):
-    if severities is None:
-        severities = [1, 2, 3, 4, 5]
-    ce_per = {}
+    severities = severities or [1, 2, 3, 4, 5]
+    ce_per     = {}
     for c in corruptions:
         model_sum = baseline_sum = 0.0
         for s in severities:
-            loader = corruption_loader_fn(c, s)
-            probs, labels = collect(model, loader, device=device)
-            err = 1.0 - accuracy(probs, labels) / 100.0
+            probs, labels = collect(model, corruption_loader_fn(c, s), device=device)
+            err           = 1.0 - accuracy(probs, labels) / 100.0
             model_sum    += err
             baseline_sum += baseline_errors.get((c, s), err)
         ce_per[c] = model_sum / baseline_sum if baseline_sum > 0 else 1.0
-    mce = 100.0 * np.mean(list(ce_per.values()))
-    return ce_per, mce
+    return ce_per, 100.0 * np.mean(list(ce_per.values()))
 
 
 def measure_latency(model, input_shape=(1, 3, 32, 32), n_warmup=50, n_runs=500, device="cpu"):
