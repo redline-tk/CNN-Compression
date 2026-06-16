@@ -40,7 +40,6 @@ def log_sample_images(loader, dataset, n=8):
     CLASSES = ["airplane","automobile","bird","cat","deer","dog","frog","horse","ship","truck"] if dataset == "cifar10" else [str(i) for i in range(100)]
     MEAN    = torch.tensor([0.4914, 0.4822, 0.4465] if dataset == "cifar10" else [0.5071, 0.4867, 0.4408]).view(3,1,1)
     STD     = torch.tensor([0.2023, 0.1994, 0.2010] if dataset == "cifar10" else [0.2675, 0.2565, 0.2761]).view(3,1,1)
-
     images, labels = next(iter(loader))
     images         = images[:n]
     imgs_denorm    = torch.clamp(images * STD + MEAN, 0, 1)
@@ -55,14 +54,13 @@ def log_corruption_samples(dataset, data_dir, n=5):
     from data.loaders import CORRUPTIONS, get_corruption_loader
     MEAN = torch.tensor([0.4914, 0.4822, 0.4465] if dataset == "cifar10" else [0.5071, 0.4867, 0.4408]).view(3,1,1)
     STD  = torch.tensor([0.2023, 0.1994, 0.2010] if dataset == "cifar10" else [0.2675, 0.2565, 0.2761]).view(3,1,1)
-
     for corruption in CORRUPTIONS:
         logged = []
         for severity in [1, 3, 5]:
             try:
-                loader      = get_corruption_loader(dataset, corruption, severity, data_dir, batch_size=n, num_workers=2)
+                loader       = get_corruption_loader(dataset, corruption, severity, data_dir, batch_size=n, num_workers=2)
                 images, lbls = next(iter(loader))
-                imgs_denorm = torch.clamp(images[:n] * STD + MEAN, 0, 1)
+                imgs_denorm  = torch.clamp(images[:n] * STD + MEAN, 0, 1)
                 for img, lbl in zip(imgs_denorm, lbls):
                     np_img = (img.permute(1,2,0).numpy() * 255).astype("uint8")
                     logged.append(wandb.Image(np_img, caption=f"sev={severity} cls={lbl.item()}"))
@@ -76,14 +74,17 @@ def log_corruption_samples(dataset, data_dir, n=5):
 def train_baseline(arch, dataset, cfg, device):
     num_classes              = 10 if dataset == "cifar10" else 100
     t_cfg                    = cfg["training"]
+    early_stopping_patience  = cfg.get("early_stopping_patience", 20)
     train_loader, val_loader = get_loaders(dataset, cfg["data_dir"],
                                             batch_size=t_cfg["batch_size"],
                                             num_workers=cfg["num_workers"])
 
     wandb.init(
         project=cfg.get("wandb_project", "CNN-Compression"),
+        entity=cfg.get("wandb_entity", None),
         name=f"{arch}_{dataset}_baseline",
-        config={"arch": arch, "dataset": dataset, "compression": "baseline", **t_cfg},
+        config={"arch": arch, "dataset": dataset, "compression": "baseline",
+                "early_stopping_patience": early_stopping_patience, **t_cfg},
         reinit=True,
     )
 
@@ -101,12 +102,14 @@ def train_baseline(arch, dataset, cfg, device):
     criterion = nn.CrossEntropyLoss(label_smoothing=t_cfg.get("label_smoothing", 0.0))
     scaler    = torch.cuda.amp.GradScaler() if (cfg.get("mixed_precision") and device == "cuda") else None
 
-    best_acc, best_state = 0.0, None
+    best_acc        = 0.0
+    best_state      = None
+    epochs_no_improve = 0
 
     for epoch in range(t_cfg["epochs"]):
         model.train()
-        running_loss    = 0.0
-        train_correct   = train_total = 0
+        running_loss  = 0.0
+        train_correct = train_total = 0
 
         for x, y in train_loader:
             x, y = x.to(device), y.to(device)
@@ -153,8 +156,16 @@ def train_baseline(arch, dataset, cfg, device):
         print(f"  [{arch}|{dataset}] epoch {epoch+1}/{t_cfg['epochs']}  loss: {train_loss:.4f}  train_acc: {train_acc:.2f}%  val_acc: {val_acc:.2f}%")
 
         if val_acc > best_acc:
-            best_acc   = val_acc
-            best_state = copy.deepcopy(m_eval.state_dict())
+            best_acc          = val_acc
+            best_state        = copy.deepcopy(m_eval.state_dict())
+            epochs_no_improve = 0
+        else:
+            epochs_no_improve += 1
+
+        if epochs_no_improve >= early_stopping_patience:
+            print(f"  Early stopping triggered at epoch {epoch+1} (no improvement for {early_stopping_patience} epochs)")
+            wandb.log({"early_stopped_epoch": epoch + 1}, commit=True)
+            break
 
     m_final = model.module if isinstance(model, nn.DataParallel) else model
     m_final.load_state_dict(best_state)
@@ -194,6 +205,7 @@ def run_compression(arch, dataset, phase_configs, cfg, device):
 
         wandb.init(
             project=cfg.get("wandb_project", "CNN-Compression"),
+            entity=cfg.get("wandb_entity", None),
             name=f"{arch}_{dataset}_{cid}",
             config={"arch": arch, "dataset": dataset, "compression": cid, **comp_cfg},
             reinit=True,

@@ -6,6 +6,8 @@ data_dir: ./data
 checkpoints_dir: ./checkpoints
 results_dir: ./results
 wandb_project: CNN-Compression
+wandb_entity: tk-redline
+early_stopping_patience: 20
 cifar10c_dir: ./data/CIFAR-10-C
 cifar100c_dir: ./data/CIFAR-100-C
 
@@ -289,3 +291,4 @@ corruptions:
   blur:    [defocus_blur, glass_blur, motion_blur, zoom_blur]
   weather: [snow, frost, fog, brightness]
   digital: [contrast, elastic_transform, pixelate, jpeg_compression]
+wandb_entity: tk-redline
