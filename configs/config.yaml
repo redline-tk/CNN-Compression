@@ -1,0 +1,290 @@
+device: auto
+num_workers: 8
+mixed_precision: true
+
+data_dir: ./data
+checkpoints_dir: ./checkpoints
+results_dir: ./results
+cifar10c_dir: ./data/CIFAR-10-C
+cifar100c_dir: ./data/CIFAR-100-C
+
+datasets:
+  - cifar10
+  - cifar100
+
+architectures:
+  - resnet20
+  - resnet50
+  - vgg19
+  - mobilenetv2
+  - efficientnet_b0
+  - convnext_tiny
+
+training:
+  epochs: 100
+  batch_size: 256
+  lr: 0.1
+  momentum: 0.9
+  weight_decay: 5e-4
+  lr_milestones: [60, 80]
+  lr_gamma: 0.1
+  label_smoothing: 0.1
+
+phase1_configs:
+  - id: baseline
+    label: "FP32 Baseline"
+    method: none
+
+  - id: pruning
+    label: "Pruning (50%)"
+    method: pruning
+    sparsity: 0.5
+    fine_tune_epochs: 20
+    fine_tune_lr: 0.01
+
+  - id: ptq
+    label: "PTQ INT8"
+    method: ptq
+    calibration_batches: 32
+
+  - id: qat
+    label: "QAT"
+    method: qat
+    epochs: 20
+    lr: 0.001
+
+  - id: pruning_qat
+    label: "Pruning + QAT"
+    method: pruning_then_qat
+    sparsity: 0.5
+    fine_tune_epochs: 10
+    fine_tune_lr: 0.01
+    qat_epochs: 20
+    qat_lr: 0.001
+
+  - id: pruning_kd
+    label: "Pruning + KD"
+    method: pruning_then_kd
+    sparsity: 0.5
+    kd_temperature: 4.0
+    kd_alpha: 0.7
+    epochs: 100
+    lr: 0.1
+    lr_milestones: [60, 80]
+    lr_gamma: 0.1
+
+phase2_configs:
+  - id: quant_int8
+    label: "Quantization INT8"
+    method: ptq
+    calibration_batches: 32
+
+  - id: sparsity
+    label: "Sparsity (Pruning)"
+    method: pruning
+    sparsity: 0.5
+    fine_tune_epochs: 20
+    fine_tune_lr: 0.01
+
+  - id: sparsity_quant_int8
+    label: "Sparsity + Quant INT8"
+    method: pruning_then_ptq
+    sparsity: 0.5
+    fine_tune_epochs: 20
+    fine_tune_lr: 0.01
+    calibration_batches: 32
+
+  - id: clustering
+    label: "Clustering"
+    method: clustering
+    n_clusters: 16
+
+  - id: clustering_quant_int8
+    label: "Clustering + Quant INT8"
+    method: clustering_then_ptq
+    n_clusters: 16
+    calibration_batches: 32
+
+  - id: sparsity_clustering
+    label: "Sparsity-preserving Clustering"
+    method: sparsity_preserving_clustering
+    sparsity: 0.5
+    n_clusters: 16
+    fine_tune_epochs: 20
+    fine_tune_lr: 0.01
+
+  - id: sparsity_clustering_quant_int8
+    label: "Sparsity-preserving Clustering + INT8"
+    method: sparsity_preserving_clustering_then_ptq
+    sparsity: 0.5
+    n_clusters: 16
+    fine_tune_epochs: 20
+    fine_tune_lr: 0.01
+    calibration_batches: 32
+
+  - id: qat_only
+    label: "QAT"
+    method: qat
+    epochs: 20
+    lr: 0.001
+
+  - id: qat_int8
+    label: "QAT + INT8"
+    method: qat_then_convert
+    epochs: 20
+    lr: 0.001
+
+  - id: cqat
+    label: "CQAT"
+    method: cqat
+    n_clusters: 16
+    epochs: 20
+    lr: 0.001
+
+  - id: cqat_int8
+    label: "CQAT + INT8"
+    method: cqat_then_convert
+    n_clusters: 16
+    epochs: 20
+    lr: 0.001
+
+  - id: pqat
+    label: "PQAT"
+    method: pqat
+    sparsity: 0.5
+    fine_tune_epochs: 10
+    fine_tune_lr: 0.01
+    epochs: 20
+    lr: 0.001
+
+  - id: pqat_int8
+    label: "PQAT + INT8"
+    method: pqat_then_convert
+    sparsity: 0.5
+    fine_tune_epochs: 10
+    fine_tune_lr: 0.01
+    epochs: 20
+    lr: 0.001
+
+  - id: pcqat
+    label: "PCQAT"
+    method: pcqat
+    sparsity: 0.5
+    n_clusters: 16
+    fine_tune_epochs: 10
+    fine_tune_lr: 0.01
+    epochs: 20
+    lr: 0.001
+
+  - id: pcqat_int8
+    label: "PCQAT + INT8"
+    method: pcqat_then_convert
+    sparsity: 0.5
+    n_clusters: 16
+    fine_tune_epochs: 10
+    fine_tune_lr: 0.01
+    epochs: 20
+    lr: 0.001
+
+phase3_configs:
+  - id: pruning_20
+    label: "Pruning 20%"
+    method: pruning
+    sparsity: 0.20
+    fine_tune_epochs: 20
+    fine_tune_lr: 0.01
+
+  - id: pruning_50
+    label: "Pruning 50%"
+    method: pruning
+    sparsity: 0.50
+    fine_tune_epochs: 20
+    fine_tune_lr: 0.01
+
+  - id: pruning_70
+    label: "Pruning 70%"
+    method: pruning
+    sparsity: 0.70
+    fine_tune_epochs: 20
+    fine_tune_lr: 0.01
+
+  - id: pruning_90
+    label: "Pruning 90%"
+    method: pruning
+    sparsity: 0.90
+    fine_tune_epochs: 30
+    fine_tune_lr: 0.005
+
+  - id: kd_temp2
+    label: "KD T=2"
+    method: kd
+    sparsity: 0.5
+    kd_temperature: 2.0
+    kd_alpha: 0.7
+    epochs: 100
+    lr: 0.1
+    lr_milestones: [60, 80]
+    lr_gamma: 0.1
+
+  - id: kd_temp4
+    label: "KD T=4"
+    method: kd
+    sparsity: 0.5
+    kd_temperature: 4.0
+    kd_alpha: 0.7
+    epochs: 100
+    lr: 0.1
+    lr_milestones: [60, 80]
+    lr_gamma: 0.1
+
+  - id: kd_temp8
+    label: "KD T=8"
+    method: kd
+    sparsity: 0.5
+    kd_temperature: 8.0
+    kd_alpha: 0.7
+    epochs: 100
+    lr: 0.1
+    lr_milestones: [60, 80]
+    lr_gamma: 0.1
+
+  - id: structured_pruning_30
+    label: "Structured Pruning 30%"
+    method: structured_pruning
+    sparsity: 0.30
+    fine_tune_epochs: 20
+    fine_tune_lr: 0.01
+
+  - id: structured_pruning_50
+    label: "Structured Pruning 50%"
+    method: structured_pruning
+    sparsity: 0.50
+    fine_tune_epochs: 20
+    fine_tune_lr: 0.01
+
+  - id: pruning_kd_70
+    label: "Pruning 70% + KD"
+    method: pruning_then_kd
+    sparsity: 0.70
+    kd_temperature: 4.0
+    kd_alpha: 0.7
+    epochs: 100
+    lr: 0.1
+    lr_milestones: [60, 80]
+    lr_gamma: 0.1
+
+  - id: fp16
+    label: "FP16"
+    method: fp16
+
+evaluation:
+  latency_runs: 500
+  ece_bins: 15
+  corruption_severities: [1, 2, 3, 4, 5]
+  batch_size: 256
+
+corruptions:
+  noise:   [gaussian_noise, shot_noise, impulse_noise]
+  blur:    [defocus_blur, glass_blur, motion_blur, zoom_blur]
+  weather: [snow, frost, fog, brightness]
+  digital: [contrast, elastic_transform, pixelate, jpeg_compression]
