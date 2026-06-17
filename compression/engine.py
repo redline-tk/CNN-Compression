@@ -4,6 +4,8 @@ import torch.nn as nn
 import torch.nn.utils.prune as prune
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import MultiStepLR, CosineAnnealingLR
+import numpy as np
+from scipy.cluster.vq import kmeans2
 
 
 def _prunable_params(model):
@@ -47,16 +49,12 @@ def apply_clustering(model, n_clusters=16):
     with torch.no_grad():
         for m in model.modules():
             if isinstance(m, (nn.Conv2d, nn.Linear)):
-                w         = m.weight.data.view(-1)
-                centroids = w[torch.randperm(len(w))[:n_clusters]].clone()
-                for _ in range(50):
-                    assign = (w.unsqueeze(1) - centroids.unsqueeze(0)).abs().argmin(dim=1)
-                    for k in range(n_clusters):
-                        mask = assign == k
-                        if mask.any():
-                            centroids[k] = w[mask].mean()
-                assign        = (w.unsqueeze(1) - centroids.unsqueeze(0)).abs().argmin(dim=1)
-                m.weight.data = centroids[assign].view(m.weight.shape)
+                w      = m.weight.data.cpu().numpy().astype(np.float64).flatten()
+                centroids, labels = kmeans2(w, n_clusters, iter=10, minit="points")
+                m.weight.data = torch.tensor(
+                    centroids[labels].reshape(m.weight.shape),
+                    dtype=m.weight.dtype,
+                )
     return model
 
 
