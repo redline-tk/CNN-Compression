@@ -140,10 +140,13 @@ def _kd_loss(s_logits, t_logits, labels, T, alpha):
 def train_kd(student, teacher, train_loader, val_loader,
              epochs=100, lr=0.1, lr_milestones=None, lr_gamma=0.1,
              temperature=4.0, alpha=0.7, device="cpu"):
+    teacher = copy.deepcopy(teacher)
     teacher.to(device).eval()
     for p in teacher.parameters():
         p.requires_grad_(False)
     student.to(device)
+    for p in student.parameters():
+        p.requires_grad_(True)
     optimizer = torch.optim.SGD(student.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
     scheduler = MultiStepLR(optimizer, milestones=lr_milestones or [60, 80], gamma=lr_gamma)
     best_acc, best_state = 0.0, None
