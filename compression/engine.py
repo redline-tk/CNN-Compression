@@ -215,6 +215,8 @@ def compress(model, method, cfg, train_loader, val_loader, calibration_loader, d
 
     if method in ("pruning_then_kd", "kd"):
         student = copy.deepcopy(model)
+        for p in student.parameters():
+            p.requires_grad_(True)
         apply_unstructured_pruning(student, cfg["sparsity"])
         remove_masks(student)
         return train_kd(
@@ -251,3 +253,22 @@ def compress(model, method, cfg, train_loader, val_loader, calibration_loader, d
         qat_m = _prepare_qat(m)
         qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["epochs"], cfg["lr"], device=device)
         return _convert_int8(qat_m), True
+
+    if method in ("pqat", "pqat_then_convert"):
+        apply_unstructured_pruning(m, cfg["sparsity"])
+        m = _train_loop(m, train_loader, val_loader, cfg.get("fine_tune_epochs", 10), cfg.get("fine_tune_lr", 0.01), device=device)
+        remove_masks(m)
+        qat_m = _prepare_qat(m)
+        qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["epochs"], cfg["lr"], device=device)
+        return _convert_int8(qat_m), True
+
+    if method in ("pcqat", "pcqat_then_convert"):
+        apply_unstructured_pruning(m, cfg["sparsity"])
+        m = _train_loop(m, train_loader, val_loader, cfg.get("fine_tune_epochs", 10), cfg.get("fine_tune_lr", 0.01), device=device)
+        remove_masks(m)
+        apply_clustering(m, cfg.get("n_clusters", 16))
+        qat_m = _prepare_qat(m)
+        qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["epochs"], cfg["lr"], device=device)
+        return _convert_int8(qat_m), True
+
+    raise ValueError(f"Unknown compression method: '{method}'")
