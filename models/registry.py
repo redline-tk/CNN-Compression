@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torchvision.models as tvm
 from torch.ao.quantization import QuantStub, DeQuantStub
+from torch.ao.nn.quantized import FloatFunctional
 
 
 class _BasicBlock(nn.Module):
@@ -13,6 +14,7 @@ class _BasicBlock(nn.Module):
         self.conv2    = nn.Conv2d(planes, planes, 3, padding=1, bias=False)
         self.bn2      = nn.BatchNorm2d(planes)
         self.shortcut = nn.Sequential()
+        self.add_op   = FloatFunctional()
         if stride != 1 or in_planes != planes:
             self.shortcut = nn.Sequential(
                 nn.Conv2d(in_planes, planes, 1, stride=stride, bias=False),
@@ -22,7 +24,7 @@ class _BasicBlock(nn.Module):
     def forward(self, x):
         out = self.relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
-        out += self.shortcut(x)
+        out = self.add_op.add(out, self.shortcut(x))
         return self.relu(out)
 
 
@@ -65,11 +67,36 @@ def _build_resnet50(num_classes):
     m.fc      = nn.Linear(m.fc.in_features, num_classes)
     m.quant   = QuantStub()
     m.dequant = DeQuantStub()
-    orig_forward = m._forward_impl
+
+    for module in m.modules():
+        if type(module).__name__ == "Bottleneck":
+            module.add_op = FloatFunctional()
+
+            def make_forward(mod):
+                def new_forward(x):
+                    identity = x
+                    out = mod.conv1(x)
+                    out = mod.bn1(out)
+                    out = mod.relu(out)
+                    out = mod.conv2(out)
+                    out = mod.bn2(out)
+                    out = mod.relu(out)
+                    out = mod.conv3(out)
+                    out = mod.bn3(out)
+                    if mod.downsample is not None:
+                        identity = mod.downsample(x)
+                    out = mod.add_op.add(out, identity)
+                    out = mod.relu(out)
+                    return out
+                return new_forward
+
+            module.forward = make_forward(module)
+
+    orig_forward_impl = m._forward_impl
 
     def new_forward(x):
         x = m.quant(x)
-        x = orig_forward(x)
+        x = orig_forward_impl(x)
         return m.dequant(x)
 
     m.forward = new_forward
@@ -109,6 +136,18 @@ def _build_mobilenetv2(num_classes):
     m.classifier[-1]  = nn.Linear(m.last_channel, num_classes)
     m.quant   = QuantStub()
     m.dequant = DeQuantStub()
+
+    for module in m.modules():
+        if type(module).__name__ == "InvertedResidual" and getattr(module, "use_res_connect", False):
+            module.add_op = FloatFunctional()
+
+            def make_forward(mod):
+                def new_forward(x):
+                    return mod.add_op.add(x, mod.conv(x))
+                return new_forward
+
+            module.forward = make_forward(module)
+
     orig_features   = m.features
     orig_classifier = m.classifier
 
@@ -130,6 +169,20 @@ def _build_efficientnet_b0(num_classes):
     m.classifier[-1] = nn.Linear(m.classifier[-1].in_features, num_classes)
     m.quant   = QuantStub()
     m.dequant = DeQuantStub()
+
+    for module in m.modules():
+        if type(module).__name__ == "MBConv" and getattr(module, "use_res_connect", False):
+            module.add_op = FloatFunctional()
+
+            def make_forward(mod):
+                def new_forward(x):
+                    result = mod.block(x)
+                    result = mod.stochastic_depth(result)
+                    return mod.add_op.add(result, x)
+                return new_forward
+
+            module.forward = make_forward(module)
+
     orig_features   = m.features
     orig_avgpool    = m.avgpool
     orig_classifier = m.classifier
@@ -155,6 +208,20 @@ def _build_convnext_tiny(num_classes):
     m.classifier[-1] = nn.Linear(m.classifier[-1].in_features, num_classes)
     m.quant   = QuantStub()
     m.dequant = DeQuantStub()
+
+    for module in m.modules():
+        if type(module).__name__ == "CNBlock":
+            module.add_op = FloatFunctional()
+
+            def make_forward(mod):
+                def new_forward(x):
+                    result = mod.layer_scale * mod.block(x)
+                    result = mod.stochastic_depth(result)
+                    return mod.add_op.add(result, x)
+                return new_forward
+
+            module.forward = make_forward(module)
+
     orig_features   = m.features
     orig_avgpool    = m.avgpool
     orig_classifier = m.classifier
