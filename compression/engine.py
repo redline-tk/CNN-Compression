@@ -1,5 +1,6 @@
 import copy
 import torch
+torch.backends.quantized.engine = "x86"
 import torch.nn as nn
 import torch.nn.utils.prune as prune
 import torch.nn.functional as F

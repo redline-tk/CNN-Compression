@@ -4,11 +4,11 @@ wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_AP
 wandb: Currently logged in as: tea-krcmar (tk-redline) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
 wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
 wandb: Tracking run with wandb version 0.26.1
-wandb: Run data is saved locally in /home/redline/files/CNN-Compression/wandb/run-20260621_223839-laks2fb3
+wandb: Run data is saved locally in /home/redline/files/CNN-Compression/wandb/run-20260621_225730-hcho6cbq
 wandb: Run `wandb offline` to turn off syncing.
 wandb: Syncing run evaluation_cifar100
 wandb: ⭐️ View project at https://wandb.ai/tk-redline/CNN-Compression
-wandb: 🚀 View run at https://wandb.ai/tk-redline/CNN-Compression/runs/laks2fb3
+wandb: 🚀 View run at https://wandb.ai/tk-redline/CNN-Compression/runs/hcho6cbq
 
 ============================================================  resnet20  ============================================================
   Computing baseline corruption errors ...

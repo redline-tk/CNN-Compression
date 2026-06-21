@@ -3,6 +3,7 @@ import csv
 import os
 
 import torch
+torch.backends.quantized.engine = "x86"
 import wandb
 import yaml
 
