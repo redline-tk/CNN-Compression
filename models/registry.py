@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision.models as tvm
+from torch.ao.quantization import QuantStub, DeQuantStub
 
 
 class _BasicBlock(nn.Module):
@@ -29,6 +30,8 @@ class ResNet20(nn.Module):
     def __init__(self, num_classes=10):
         super().__init__()
         self.in_planes = 16
+        self.quant     = QuantStub()
+        self.dequant   = DeQuantStub()
         self.conv1     = nn.Conv2d(3, 16, 3, padding=1, bias=False)
         self.bn1       = nn.BatchNorm2d(16)
         self.relu      = nn.ReLU(inplace=True)
@@ -46,11 +49,13 @@ class ResNet20(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        x = self.quant(x)
         x = self.relu(self.bn1(self.conv1(x)))
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
-        return self.fc(self.pool(x).flatten(1))
+        x = self.fc(self.pool(x).flatten(1))
+        return self.dequant(x)
 
 
 def _build_resnet50(num_classes):
@@ -58,6 +63,16 @@ def _build_resnet50(num_classes):
     m.conv1   = nn.Conv2d(3, 64, 3, stride=1, padding=1, bias=False)
     m.maxpool = nn.Identity()
     m.fc      = nn.Linear(m.fc.in_features, num_classes)
+    m.quant   = QuantStub()
+    m.dequant = DeQuantStub()
+    orig_forward = m._forward_impl
+
+    def new_forward(x):
+        x = m.quant(x)
+        x = orig_forward(x)
+        return m.dequant(x)
+
+    m.forward = new_forward
     return m
 
 
@@ -70,6 +85,21 @@ def _build_vgg19(num_classes):
         nn.Dropout(0.5),
         nn.Linear(512, num_classes),
     )
+    m.quant   = QuantStub()
+    m.dequant = DeQuantStub()
+    orig_features   = m.features
+    orig_avgpool    = m.avgpool
+    orig_classifier = m.classifier
+
+    def new_forward(x):
+        x = m.quant(x)
+        x = orig_features(x)
+        x = orig_avgpool(x)
+        x = torch.flatten(x, 1)
+        x = orig_classifier(x)
+        return m.dequant(x)
+
+    m.forward = new_forward
     return m
 
 
@@ -77,6 +107,19 @@ def _build_mobilenetv2(num_classes):
     m                 = tvm.mobilenet_v2(weights=None)
     m.features[0][0]  = nn.Conv2d(3, 32, 3, stride=1, padding=1, bias=False)
     m.classifier[-1]  = nn.Linear(m.last_channel, num_classes)
+    m.quant   = QuantStub()
+    m.dequant = DeQuantStub()
+    orig_features   = m.features
+    orig_classifier = m.classifier
+
+    def new_forward(x):
+        x = m.quant(x)
+        x = orig_features(x)
+        x = nn.functional.adaptive_avg_pool2d(x, 1).flatten(1)
+        x = orig_classifier(x)
+        return m.dequant(x)
+
+    m.forward = new_forward
     return m
 
 
@@ -85,6 +128,21 @@ def _build_efficientnet_b0(num_classes):
     fc               = m.features[0][0]
     m.features[0][0] = nn.Conv2d(fc.in_channels, fc.out_channels, 3, stride=1, padding=1, bias=False)
     m.classifier[-1] = nn.Linear(m.classifier[-1].in_features, num_classes)
+    m.quant   = QuantStub()
+    m.dequant = DeQuantStub()
+    orig_features   = m.features
+    orig_avgpool    = m.avgpool
+    orig_classifier = m.classifier
+
+    def new_forward(x):
+        x = m.quant(x)
+        x = orig_features(x)
+        x = orig_avgpool(x)
+        x = torch.flatten(x, 1)
+        x = orig_classifier(x)
+        return m.dequant(x)
+
+    m.forward = new_forward
     return m
 
 
@@ -95,6 +153,20 @@ def _build_convnext_tiny(num_classes):
     m.features[0][0] = nn.Conv2d(in_ch, out_ch, 3, stride=1, padding=1)
     m.features[0][1] = nn.LayerNorm([out_ch, 32, 32])
     m.classifier[-1] = nn.Linear(m.classifier[-1].in_features, num_classes)
+    m.quant   = QuantStub()
+    m.dequant = DeQuantStub()
+    orig_features   = m.features
+    orig_avgpool    = m.avgpool
+    orig_classifier = m.classifier
+
+    def new_forward(x):
+        x = m.quant(x)
+        x = orig_features(x)
+        x = orig_avgpool(x)
+        x = orig_classifier(x)
+        return m.dequant(x)
+
+    m.forward = new_forward
     return m
 
 
