@@ -60,190 +60,251 @@ class ResNet20(nn.Module):
         return self.dequant(x)
 
 
-def _build_resnet50(num_classes):
-    m         = tvm.resnet50(weights=None)
-    m.conv1   = nn.Conv2d(3, 64, 3, stride=1, padding=1, bias=False)
-    m.maxpool = nn.Identity()
-    m.fc      = nn.Linear(m.fc.in_features, num_classes)
-    m.quant   = QuantStub()
-    m.dequant = DeQuantStub()
+class _QuantBottleneck(nn.Module):
+    def __init__(self, bottleneck):
+        super().__init__()
+        self.conv1      = bottleneck.conv1
+        self.bn1        = bottleneck.bn1
+        self.conv2      = bottleneck.conv2
+        self.bn2        = bottleneck.bn2
+        self.conv3      = bottleneck.conv3
+        self.bn3        = bottleneck.bn3
+        self.relu       = bottleneck.relu
+        self.downsample = bottleneck.downsample
+        self.add_op     = FloatFunctional()
 
-    for module in m.modules():
-        if type(module).__name__ == "Bottleneck":
-            module.add_op = FloatFunctional()
-
-            def make_forward(mod):
-                def new_forward(x):
-                    identity = x
-                    out = mod.conv1(x)
-                    out = mod.bn1(out)
-                    out = mod.relu(out)
-                    out = mod.conv2(out)
-                    out = mod.bn2(out)
-                    out = mod.relu(out)
-                    out = mod.conv3(out)
-                    out = mod.bn3(out)
-                    if mod.downsample is not None:
-                        identity = mod.downsample(x)
-                    out = mod.add_op.add(out, identity)
-                    out = mod.relu(out)
-                    return out
-                return new_forward
-
-            module.forward = make_forward(module)
-
-    orig_forward_impl = m._forward_impl
-
-    def new_forward(x):
-        x = m.quant(x)
-        x = orig_forward_impl(x)
-        return m.dequant(x)
-
-    m.forward = new_forward
-    return m
+    def forward(self, x):
+        identity = x
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.relu(self.bn2(self.conv2(out)))
+        out = self.bn3(self.conv3(out))
+        if self.downsample is not None:
+            identity = self.downsample(x)
+        out = self.add_op.add(out, identity)
+        return self.relu(out)
 
 
-def _build_vgg19(num_classes):
-    m            = tvm.vgg19_bn(weights=None)
-    m.avgpool    = nn.AdaptiveAvgPool2d((1, 1))
-    m.classifier = nn.Sequential(
-        nn.Linear(512, 512),
-        nn.ReLU(True),
-        nn.Dropout(0.5),
-        nn.Linear(512, num_classes),
-    )
-    m.quant   = QuantStub()
-    m.dequant = DeQuantStub()
-    orig_features   = m.features
-    orig_avgpool    = m.avgpool
-    orig_classifier = m.classifier
+class QuantResNet50(nn.Module):
+    def __init__(self, num_classes=10):
+        super().__init__()
+        base = tvm.resnet50(weights=None)
+        base.conv1   = nn.Conv2d(3, 64, 3, stride=1, padding=1, bias=False)
+        base.maxpool = nn.Identity()
+        base.fc      = nn.Linear(base.fc.in_features, num_classes)
 
-    def new_forward(x):
-        x = m.quant(x)
-        x = orig_features(x)
-        x = orig_avgpool(x)
+        for layer_name in ["layer1", "layer2", "layer3", "layer4"]:
+            layer = getattr(base, layer_name)
+            wrapped = nn.Sequential(*[_QuantBottleneck(b) for b in layer])
+            setattr(base, layer_name, wrapped)
+
+        self.quant   = QuantStub()
+        self.dequant = DeQuantStub()
+        self.conv1   = base.conv1
+        self.bn1     = base.bn1
+        self.relu    = base.relu
+        self.maxpool = base.maxpool
+        self.layer1  = base.layer1
+        self.layer2  = base.layer2
+        self.layer3  = base.layer3
+        self.layer4  = base.layer4
+        self.avgpool = base.avgpool
+        self.fc      = base.fc
+
+    def forward(self, x):
+        x = self.quant(x)
+        x = self.relu(self.bn1(self.conv1(x)))
+        x = self.maxpool(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.avgpool(x)
         x = torch.flatten(x, 1)
-        x = orig_classifier(x)
-        return m.dequant(x)
-
-    m.forward = new_forward
-    return m
+        x = self.fc(x)
+        return self.dequant(x)
 
 
-def _build_mobilenetv2(num_classes):
-    m                 = tvm.mobilenet_v2(weights=None)
-    m.features[0][0]  = nn.Conv2d(3, 32, 3, stride=1, padding=1, bias=False)
-    m.classifier[-1]  = nn.Linear(m.last_channel, num_classes)
-    m.quant   = QuantStub()
-    m.dequant = DeQuantStub()
+class QuantVGG19(nn.Module):
+    def __init__(self, num_classes=10):
+        super().__init__()
+        base = tvm.vgg19_bn(weights=None)
+        self.quant      = QuantStub()
+        self.dequant    = DeQuantStub()
+        self.features   = base.features
+        self.avgpool    = nn.AdaptiveAvgPool2d((1, 1))
+        self.classifier = nn.Sequential(
+            nn.Linear(512, 512),
+            nn.ReLU(True),
+            nn.Dropout(0.5),
+            nn.Linear(512, num_classes),
+        )
 
-    for module in m.modules():
-        if type(module).__name__ == "InvertedResidual" and getattr(module, "use_res_connect", False):
-            module.add_op = FloatFunctional()
+    def forward(self, x):
+        x = self.quant(x)
+        x = self.features(x)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.classifier(x)
+        return self.dequant(x)
 
-            def make_forward(mod):
-                def new_forward(x):
-                    return mod.add_op.add(x, mod.conv(x))
-                return new_forward
 
-            module.forward = make_forward(module)
+class _QuantInvertedResidual(nn.Module):
+    def __init__(self, block):
+        super().__init__()
+        self.conv           = block.conv
+        self.use_res_connect = block.use_res_connect
+        self.add_op         = FloatFunctional()
 
-    orig_features   = m.features
-    orig_classifier = m.classifier
+    def forward(self, x):
+        if self.use_res_connect:
+            return self.add_op.add(x, self.conv(x))
+        return self.conv(x)
 
-    def new_forward(x):
-        x = m.quant(x)
-        x = orig_features(x)
+
+class QuantMobileNetV2(nn.Module):
+    def __init__(self, num_classes=10):
+        super().__init__()
+        base = tvm.mobilenet_v2(weights=None)
+        base.features[0][0] = nn.Conv2d(3, 32, 3, stride=1, padding=1, bias=False)
+
+        wrapped_features = []
+        for module in base.features:
+            if type(module).__name__ == "InvertedResidual":
+                wrapped_features.append(_QuantInvertedResidual(module))
+            else:
+                wrapped_features.append(module)
+
+        self.quant      = QuantStub()
+        self.dequant     = DeQuantStub()
+        self.features    = nn.Sequential(*wrapped_features)
+        self.classifier  = nn.Sequential(
+            nn.Dropout(0.2),
+            nn.Linear(base.last_channel, num_classes),
+        )
+
+    def forward(self, x):
+        x = self.quant(x)
+        x = self.features(x)
         x = nn.functional.adaptive_avg_pool2d(x, 1).flatten(1)
-        x = orig_classifier(x)
-        return m.dequant(x)
-
-    m.forward = new_forward
-    return m
+        x = self.classifier(x)
+        return self.dequant(x)
 
 
-def _build_efficientnet_b0(num_classes):
-    m                = tvm.efficientnet_b0(weights=None)
-    fc               = m.features[0][0]
-    m.features[0][0] = nn.Conv2d(fc.in_channels, fc.out_channels, 3, stride=1, padding=1, bias=False)
-    m.classifier[-1] = nn.Linear(m.classifier[-1].in_features, num_classes)
-    m.quant   = QuantStub()
-    m.dequant = DeQuantStub()
+class _QuantMBConv(nn.Module):
+    def __init__(self, block):
+        super().__init__()
+        self.block             = block.block
+        self.use_res_connect   = getattr(block, "use_res_connect", False)
+        self.stochastic_depth  = block.stochastic_depth
+        self.add_op            = FloatFunctional()
 
-    for module in m.modules():
-        if type(module).__name__ == "MBConv" and getattr(module, "use_res_connect", False):
-            module.add_op = FloatFunctional()
+    def forward(self, x):
+        result = self.block(x)
+        if self.use_res_connect:
+            result = self.stochastic_depth(result)
+            return self.add_op.add(result, x)
+        return result
 
-            def make_forward(mod):
-                def new_forward(x):
-                    result = mod.block(x)
-                    result = mod.stochastic_depth(result)
-                    return mod.add_op.add(result, x)
-                return new_forward
 
-            module.forward = make_forward(module)
+class QuantEfficientNetB0(nn.Module):
+    def __init__(self, num_classes=10):
+        super().__init__()
+        base = tvm.efficientnet_b0(weights=None)
+        fc   = base.features[0][0]
+        base.features[0][0] = nn.Conv2d(fc.in_channels, fc.out_channels, 3, stride=1, padding=1, bias=False)
 
-    orig_features   = m.features
-    orig_avgpool    = m.avgpool
-    orig_classifier = m.classifier
+        wrapped_features = []
+        for module in base.features:
+            if type(module).__name__ == "Sequential":
+                wrapped_sub = []
+                for sub in module:
+                    if type(sub).__name__ == "MBConv":
+                        wrapped_sub.append(_QuantMBConv(sub))
+                    else:
+                        wrapped_sub.append(sub)
+                wrapped_features.append(nn.Sequential(*wrapped_sub))
+            else:
+                wrapped_features.append(module)
 
-    def new_forward(x):
-        x = m.quant(x)
-        x = orig_features(x)
-        x = orig_avgpool(x)
+        self.quant      = QuantStub()
+        self.dequant    = DeQuantStub()
+        self.features   = nn.Sequential(*wrapped_features)
+        self.avgpool    = base.avgpool
+        self.classifier = nn.Sequential(
+            nn.Dropout(0.2, inplace=True),
+            nn.Linear(base.classifier[-1].in_features, num_classes),
+        )
+
+    def forward(self, x):
+        x = self.quant(x)
+        x = self.features(x)
+        x = self.avgpool(x)
         x = torch.flatten(x, 1)
-        x = orig_classifier(x)
-        return m.dequant(x)
-
-    m.forward = new_forward
-    return m
+        x = self.classifier(x)
+        return self.dequant(x)
 
 
-def _build_convnext_tiny(num_classes):
-    m                = tvm.convnext_tiny(weights=None)
-    in_ch            = m.features[0][0].in_channels
-    out_ch           = m.features[0][0].out_channels
-    m.features[0][0] = nn.Conv2d(in_ch, out_ch, 3, stride=1, padding=1)
-    m.features[0][1] = nn.LayerNorm([out_ch, 32, 32])
-    m.classifier[-1] = nn.Linear(m.classifier[-1].in_features, num_classes)
-    m.quant   = QuantStub()
-    m.dequant = DeQuantStub()
+class _QuantCNBlock(nn.Module):
+    def __init__(self, block):
+        super().__init__()
+        self.block            = block.block
+        self.layer_scale      = block.layer_scale
+        self.stochastic_depth = block.stochastic_depth
+        self.add_op           = FloatFunctional()
 
-    for module in m.modules():
-        if type(module).__name__ == "CNBlock":
-            module.add_op = FloatFunctional()
+    def forward(self, x):
+        result = self.layer_scale * self.block(x)
+        result = self.stochastic_depth(result)
+        return self.add_op.add(result, x)
 
-            def make_forward(mod):
-                def new_forward(x):
-                    result = mod.layer_scale * mod.block(x)
-                    result = mod.stochastic_depth(result)
-                    return mod.add_op.add(result, x)
-                return new_forward
 
-            module.forward = make_forward(module)
+class QuantConvNeXtTiny(nn.Module):
+    def __init__(self, num_classes=10):
+        super().__init__()
+        base   = tvm.convnext_tiny(weights=None)
+        in_ch  = base.features[0][0].in_channels
+        out_ch = base.features[0][0].out_channels
+        base.features[0][0] = nn.Conv2d(in_ch, out_ch, 3, stride=1, padding=1)
+        base.features[0][1] = nn.LayerNorm([out_ch, 32, 32])
 
-    orig_features   = m.features
-    orig_avgpool    = m.avgpool
-    orig_classifier = m.classifier
+        wrapped_features = []
+        for module in base.features:
+            if type(module).__name__ == "Sequential":
+                wrapped_sub = []
+                for sub in module:
+                    if type(sub).__name__ == "CNBlock":
+                        wrapped_sub.append(_QuantCNBlock(sub))
+                    else:
+                        wrapped_sub.append(sub)
+                wrapped_features.append(nn.Sequential(*wrapped_sub))
+            else:
+                wrapped_features.append(module)
 
-    def new_forward(x):
-        x = m.quant(x)
-        x = orig_features(x)
-        x = orig_avgpool(x)
-        x = orig_classifier(x)
-        return m.dequant(x)
+        self.quant      = QuantStub()
+        self.dequant    = DeQuantStub()
+        self.features   = nn.Sequential(*wrapped_features)
+        self.avgpool    = base.avgpool
+        self.classifier = nn.Sequential(
+            base.classifier[0],
+            base.classifier[1],
+            nn.Linear(base.classifier[-1].in_features, num_classes),
+        )
 
-    m.forward = new_forward
-    return m
+    def forward(self, x):
+        x = self.quant(x)
+        x = self.features(x)
+        x = self.avgpool(x)
+        x = self.classifier(x)
+        return self.dequant(x)
 
 
 _BUILDERS = {
     "resnet20":        ResNet20,
-    "resnet50":        _build_resnet50,
-    "vgg19":           _build_vgg19,
-    "mobilenetv2":     _build_mobilenetv2,
-    "efficientnet_b0": _build_efficientnet_b0,
-    "convnext_tiny":   _build_convnext_tiny,
+    "resnet50":        QuantResNet50,
+    "vgg19":           QuantVGG19,
+    "mobilenetv2":     QuantMobileNetV2,
+    "efficientnet_b0": QuantEfficientNetB0,
+    "convnext_tiny":   QuantConvNeXtTiny,
 }
 
 
