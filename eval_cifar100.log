@@ -1,0 +1,15 @@
+/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: 'Could not load this library: /home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torchvision/image.so'If you don't plan on using image functionality from `torchvision.io`, you can ignore this warning. Otherwise, there might be something wrong with your environment. Did you have `libjpeg` or `libpng` installed before building `torchvision` from source?
+  warn(
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_API_KEY.
+wandb: Currently logged in as: tea-krcmar (tk-redline) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: setting up run l7yx7syu
+wandb: Tracking run with wandb version 0.26.1
+wandb: Run data is saved locally in /home/redline/files/CNN-Compression/wandb/run-20260624_123105-l7yx7syu
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run evaluation_cifar100
+wandb: ⭐️ View project at https://wandb.ai/tk-redline/CNN-Compression
+wandb: 🚀 View run at https://wandb.ai/tk-redline/CNN-Compression/runs/l7yx7syu
+
+============================================================  resnet20  ============================================================
+  Computing baseline corruption errors ...

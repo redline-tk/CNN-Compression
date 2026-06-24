@@ -1,7 +1,7 @@
 import copy
 import torch
-torch.backends.quantized.engine = "x86"
 import torch.nn as nn
+torch.backends.quantized.engine = "x86"
 import torch.nn.utils.prune as prune
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import MultiStepLR, CosineAnnealingLR
@@ -50,7 +50,7 @@ def apply_clustering(model, n_clusters=16):
     with torch.no_grad():
         for m in model.modules():
             if isinstance(m, (nn.Conv2d, nn.Linear)):
-                w = m.weight.data.cpu().numpy().astype(np.float64).flatten()
+                w      = m.weight.data.cpu().numpy().astype(np.float64).flatten()
                 centroids, labels = kmeans2(w, n_clusters, iter=10, minit="points")
                 m.weight.data = torch.tensor(
                     centroids[labels].reshape(m.weight.shape),
@@ -59,15 +59,116 @@ def apply_clustering(model, n_clusters=16):
     return model
 
 
+def _find_fusable_groups(model):
+    groups = []
+    named_children = list(model.named_modules())
+    name_to_module = dict(named_children)
+
+    for name, module in named_children:
+        if not isinstance(module, nn.Sequential):
+            continue
+        children = list(module.named_children())
+        i = 0
+        while i < len(children):
+            child_name, child_mod = children[i]
+            if isinstance(child_mod, nn.Conv2d):
+                full_conv = f"{name}.{child_name}" if name else child_name
+                group = [full_conv]
+                if i + 1 < len(children) and isinstance(children[i + 1][1], nn.BatchNorm2d):
+                    bn_name = children[i + 1][0]
+                    full_bn = f"{name}.{bn_name}" if name else bn_name
+                    group.append(full_bn)
+                    if i + 2 < len(children) and isinstance(children[i + 2][1], nn.ReLU):
+                        relu_name = children[i + 2][0]
+                        full_relu = f"{name}.{relu_name}" if name else relu_name
+                        group.append(full_relu)
+                        i += 3
+                    else:
+                        i += 2
+                else:
+                    i += 1
+                if len(group) >= 2:
+                    groups.append(group)
+            else:
+                i += 1
+    return groups
+
+
+def _fuse_basic_block_pattern(model):
+    groups = []
+    for name, module in model.named_modules():
+        conv1 = getattr(module, "conv1", None)
+        bn1   = getattr(module, "bn1", None)
+        relu  = getattr(module, "relu", None)
+        conv2 = getattr(module, "conv2", None)
+        bn2   = getattr(module, "bn2", None)
+
+        if isinstance(conv1, nn.Conv2d) and isinstance(bn1, nn.BatchNorm2d):
+            prefix = f"{name}." if name else ""
+            if isinstance(relu, nn.ReLU):
+                groups.append([f"{prefix}conv1", f"{prefix}bn1", f"{prefix}relu"])
+            else:
+                groups.append([f"{prefix}conv1", f"{prefix}bn1"])
+
+        if isinstance(conv2, nn.Conv2d) and isinstance(bn2, nn.BatchNorm2d):
+            prefix = f"{name}." if name else ""
+            groups.append([f"{prefix}conv2", f"{prefix}bn2"])
+
+        conv3 = getattr(module, "conv3", None)
+        bn3   = getattr(module, "bn3", None)
+        if isinstance(conv3, nn.Conv2d) and isinstance(bn3, nn.BatchNorm2d):
+            prefix = f"{name}." if name else ""
+            groups.append([f"{prefix}conv3", f"{prefix}bn3"])
+
+        downsample = getattr(module, "downsample", None)
+        if isinstance(downsample, nn.Sequential) and len(downsample) >= 2:
+            if isinstance(downsample[0], nn.Conv2d) and isinstance(downsample[1], nn.BatchNorm2d):
+                prefix = f"{name}." if name else ""
+                groups.append([f"{prefix}downsample.0", f"{prefix}downsample.1"])
+
+        shortcut = getattr(module, "shortcut", None)
+        if isinstance(shortcut, nn.Sequential) and len(shortcut) >= 2:
+            if isinstance(shortcut[0], nn.Conv2d) and isinstance(shortcut[1], nn.BatchNorm2d):
+                prefix = f"{name}." if name else ""
+                groups.append([f"{prefix}shortcut.0", f"{prefix}shortcut.1"])
+
+    return groups
+
+
+def fuse_model(model):
+    model.eval()
+    groups = _fuse_basic_block_pattern(model)
+    groups += _find_fusable_groups(model)
+
+    seen = set()
+    deduped = []
+    for g in groups:
+        key = tuple(g)
+        if key not in seen:
+            seen.add(key)
+            deduped.append(g)
+
+    if deduped:
+        try:
+            torch.quantization.fuse_modules(model, deduped, inplace=True)
+        except Exception as e:
+            print(f"  [WARN] fusion partially failed: {e}")
+    return model
+
+
 def _prepare_ptq(model):
     m = copy.deepcopy(model).cpu().eval()
+    fuse_model(m)
     m.qconfig = torch.quantization.get_default_qconfig("x86")
     torch.quantization.prepare(m, inplace=True)
     return m
 
 
 def _prepare_qat(model):
-    m = copy.deepcopy(model).cpu().train()
+    m = copy.deepcopy(model).cpu()
+    m.eval()
+    fuse_model(m)
+    m.train()
     m.qconfig = torch.quantization.get_default_qat_qconfig("x86")
     torch.quantization.prepare_qat(m, inplace=True)
     return m
@@ -114,7 +215,7 @@ def _train_loop(model, train_loader, val_loader, epochs, lr,
             acc = _quick_acc(model, val_loader, device)
             print(f"    epoch [{epoch+1}/{epochs}]  val_acc: {acc:.2f}%")
             if acc > best_acc:
-                best_acc = acc
+                best_acc   = acc
                 best_state = copy.deepcopy(model.state_dict())
     if best_state:
         model.load_state_dict(best_state)
@@ -126,9 +227,9 @@ def _quick_acc(model, loader, device):
     correct = total = 0
     with torch.no_grad():
         for x, y in loader:
-            preds = model(x.to(device)).argmax(1).cpu()
+            preds    = model(x.to(device)).argmax(1).cpu()
             correct += (preds == y).sum().item()
-            total += y.size(0)
+            total   += y.size(0)
     return 100.0 * correct / total
 
 
@@ -164,7 +265,7 @@ def train_kd(student, teacher, train_loader, val_loader,
             acc = _quick_acc(student, val_loader, device)
             print(f"    KD epoch [{epoch+1}/{epochs}]  val_acc: {acc:.2f}%")
             if acc > best_acc:
-                best_acc = acc
+                best_acc   = acc
                 best_state = copy.deepcopy(student.state_dict())
     if best_state:
         student.load_state_dict(best_state)
@@ -198,7 +299,7 @@ def compress(model, method, cfg, train_loader, val_loader, calibration_loader, d
 
     if method in ("qat", "qat_then_convert"):
         qat_m = _prepare_qat(m)
-        qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["epochs"], cfg["lr"], device=device)
+        qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["epochs"], cfg["lr"], device="cpu")
         return _convert_int8(qat_m), True
 
     if method == "pruning_then_ptq":
@@ -214,13 +315,11 @@ def compress(model, method, cfg, train_loader, val_loader, calibration_loader, d
         m = _train_loop(m, train_loader, val_loader, cfg["fine_tune_epochs"], cfg["fine_tune_lr"], device=device)
         remove_masks(m)
         qat_m = _prepare_qat(m)
-        qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["qat_epochs"], cfg["qat_lr"], device=device)
+        qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["qat_epochs"], cfg["qat_lr"], device="cpu")
         return _convert_int8(qat_m), True
 
     if method in ("pruning_then_kd", "kd"):
         student = copy.deepcopy(model)
-        for p in student.parameters():
-            p.requires_grad_(True)
         apply_unstructured_pruning(student, cfg["sparsity"])
         remove_masks(student)
         return train_kd(
@@ -255,7 +354,7 @@ def compress(model, method, cfg, train_loader, val_loader, calibration_loader, d
     if method in ("cqat", "cqat_then_convert"):
         apply_clustering(m, cfg.get("n_clusters", 16))
         qat_m = _prepare_qat(m)
-        qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["epochs"], cfg["lr"], device=device)
+        qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["epochs"], cfg["lr"], device="cpu")
         return _convert_int8(qat_m), True
 
     if method in ("pqat", "pqat_then_convert"):
@@ -263,7 +362,7 @@ def compress(model, method, cfg, train_loader, val_loader, calibration_loader, d
         m = _train_loop(m, train_loader, val_loader, cfg.get("fine_tune_epochs", 10), cfg.get("fine_tune_lr", 0.01), device=device)
         remove_masks(m)
         qat_m = _prepare_qat(m)
-        qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["epochs"], cfg["lr"], device=device)
+        qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["epochs"], cfg["lr"], device="cpu")
         return _convert_int8(qat_m), True
 
     if method in ("pcqat", "pcqat_then_convert"):
@@ -272,7 +371,7 @@ def compress(model, method, cfg, train_loader, val_loader, calibration_loader, d
         remove_masks(m)
         apply_clustering(m, cfg.get("n_clusters", 16))
         qat_m = _prepare_qat(m)
-        qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["epochs"], cfg["lr"], device=device)
+        qat_m = _train_loop(qat_m, train_loader, val_loader, cfg["epochs"], cfg["lr"], device="cpu")
         return _convert_int8(qat_m), True
 
     raise ValueError(f"Unknown compression method: '{method}'")

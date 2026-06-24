@@ -190,10 +190,35 @@ class QuantMobileNetV2(nn.Module):
         return self.dequant(x)
 
 
+class _QuantSqueezeExcitation(nn.Module):
+    def __init__(self, se):
+        super().__init__()
+        self.avgpool = se.avgpool
+        self.fc1 = se.fc1
+        self.fc2 = se.fc2
+        self.activation = se.activation
+        self.scale_activation = se.scale_activation
+        self.mul_op = FloatFunctional()
+
+    def forward(self, x):
+        scale = self.avgpool(x)
+        scale = self.fc1(scale)
+        scale = self.activation(scale)
+        scale = self.fc2(scale)
+        scale = self.scale_activation(scale)
+        return self.mul_op.mul(scale, x)
+
+
 class _QuantMBConv(nn.Module):
     def __init__(self, block):
         super().__init__()
-        self.block             = block.block
+        wrapped_block = []
+        for sub in block.block:
+            if type(sub).__name__ == "SqueezeExcitation":
+                wrapped_block.append(_QuantSqueezeExcitation(sub))
+            else:
+                wrapped_block.append(sub)
+        self.block             = nn.Sequential(*wrapped_block)
         self.use_res_connect   = getattr(block, "use_res_connect", False)
         self.stochastic_depth  = block.stochastic_depth
         self.add_op            = FloatFunctional()
@@ -206,12 +231,21 @@ class _QuantMBConv(nn.Module):
         return result
 
 
+def _replace_silu_with_relu(module):
+    for name, child in module.named_children():
+        if isinstance(child, nn.SiLU):
+            setattr(module, name, nn.ReLU(inplace=True))
+        else:
+            _replace_silu_with_relu(child)
+
+
 class QuantEfficientNetB0(nn.Module):
     def __init__(self, num_classes=10):
         super().__init__()
         base = tvm.efficientnet_b0(weights=None)
         fc   = base.features[0][0]
         base.features[0][0] = nn.Conv2d(fc.in_channels, fc.out_channels, 3, stride=1, padding=1, bias=False)
+        _replace_silu_with_relu(base)
 
         wrapped_features = []
         for module in base.features:

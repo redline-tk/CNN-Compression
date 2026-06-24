@@ -1,0 +1,217 @@
+/home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: 'Could not load this library: /home/redline/.conda/envs/chad_new/lib/python3.10/site-packages/torchvision/image.so'If you don't plan on using image functionality from `torchvision.io`, you can ignore this warning. Otherwise, there might be something wrong with your environment. Did you have `libjpeg` or `libpng` installed before building `torchvision` from source?
+  warn(
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from WANDB_API_KEY.
+wandb: Currently logged in as: tea-krcmar (tk-redline) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.26.1
+wandb: Run data is saved locally in /home/redline/files/CNN-Compression/wandb/run-20260624_123022-mmgpfys4
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run evaluation_cifar10
+wandb: ⭐️ View project at https://wandb.ai/tk-redline/CNN-Compression
+wandb: 🚀 View run at https://wandb.ai/tk-redline/CNN-Compression/runs/mmgpfys4
+
+============================================================  resnet20  ============================================================
+  Computing baseline corruption errors ...
+wandb: Finishing previous runs because reinit is set to True.
+wandb: updating run metadata
+wandb: uploading output.log; uploading wandb-summary.json; uploading config.yaml
+wandb: 🚀 View run evaluation_cifar10 at: https://wandb.ai/tk-redline/CNN-Compression/runs/mmgpfys4
+wandb: ⭐️ View project at: https://wandb.ai/tk-redline/CNN-Compression
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260624_123022-mmgpfys4/logs
+wandb: setting up run hogty4bt
+wandb: Tracking run with wandb version 0.26.1
+wandb: Run data is saved locally in /home/redline/files/CNN-Compression/wandb/run-20260624_123821-hogty4bt
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run eval_resnet20_cifar10_baseline
+wandb: ⭐️ View project at https://wandb.ai/tk-redline/CNN-Compression
+wandb: 🚀 View run at https://wandb.ai/tk-redline/CNN-Compression/runs/hogty4bt
+
+  -- FP32 Baseline --
+Files already downloaded and verified
+Files already downloaded and verified
+wandb: uploading artifact run-hogty4bt-corruption_predictionspixelate-_iIDBA; uploading artifact run-hogty4bt-corruption_predictionsjpeg_compression-5DJhXQ; updating run metadata
+wandb: uploading artifact run-hogty4bt-corruption_predictionspixelate-_iIDBA; uploading artifact run-hogty4bt-corruption_predictionsjpeg_compression-5DJhXQ; uploading media/table/corruption_predictions/contrast_14_4e184911dbc84f3b58f4.table.json; uploading media/table/corruption_predictions/elastic_transform_15_d6dcf8a89ee465558966.table.json; uploading media/table/corruption_predictions/pixelate_16_a71a85dd40c91875d7ea.table.json (+ 3 more)
+wandb: uploading artifact run-hogty4bt-corruption_predictionsjpeg_compression-5DJhXQ
+wandb: uploading config.yaml
+wandb: uploading history steps 12-17, summary
+wandb: 
+wandb: Run history:
+wandb:              acc_clean ▁
+wandb:      compression_ratio ▁
+wandb:        drop/brightness ▁
+wandb:          drop/contrast ▁
+wandb:      drop/defocus_blur ▁
+wandb: drop/elastic_transform ▁
+wandb:               drop/fog ▁
+wandb:             drop/frost ▁
+wandb:    drop/gaussian_noise ▁
+wandb:        drop/glass_blur ▁
+wandb:                    +16 ...
+wandb: 
+wandb: Run summary:
+wandb: acc_brightness_s1 91.86
+wandb: acc_brightness_s2 91.73
+wandb: acc_brightness_s3 91.45
+wandb: acc_brightness_s4 90.95
+wandb: acc_brightness_s5 89.92
+wandb:         acc_clean 92.01
+wandb:   acc_contrast_s1 91.61
+wandb:   acc_contrast_s2 90.18
+wandb:   acc_contrast_s3 89.14
+wandb:   acc_contrast_s4 87.05
+wandb:              +243 ...
+wandb: 
+wandb: 🚀 View run eval_resnet20_cifar10_baseline at: https://wandb.ai/tk-redline/CNN-Compression/runs/hogty4bt
+wandb: ⭐️ View project at: https://wandb.ai/tk-redline/CNN-Compression
+wandb: Synced 5 W&B file(s), 15 media file(s), 390 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260624_123821-hogty4bt/logs
+wandb: setting up run 34rckd6s
+wandb: Tracking run with wandb version 0.26.1
+wandb: Run data is saved locally in /home/redline/files/CNN-Compression/wandb/run-20260624_124441-34rckd6s
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run eval_resnet20_cifar10_pruning
+wandb: ⭐️ View project at https://wandb.ai/tk-redline/CNN-Compression
+wandb: 🚀 View run at https://wandb.ai/tk-redline/CNN-Compression/runs/34rckd6s
+    acc_clean: 92.01%  mCE: 100.0  latency: 8.61ms  size: 1.14MB
+
+  -- Pruning (50%) --
+Files already downloaded and verified
+Files already downloaded and verified
+wandb: uploading artifact run-34rckd6s-corruption_predictionspixelate-J9X7UA; uploading artifact run-34rckd6s-corruption_predictionsjpeg_compression-7r3cVg; updating run metadata
+wandb: uploading artifact run-34rckd6s-corruption_predictionspixelate-J9X7UA; uploading artifact run-34rckd6s-corruption_predictionsjpeg_compression-7r3cVg
+wandb: uploading artifact run-34rckd6s-corruption_predictionsjpeg_compression-7r3cVg
+wandb: uploading artifact run-34rckd6s-corruption_predictionsjpeg_compression-7r3cVg; uploading media/table/corruption_predictions/elastic_transform_15_d6dcf8a89ee465558966.table.json; uploading media/table/corruption_predictions/pixelate_16_f28186c2abf97bb94dda.table.json; uploading media/table/corruption_predictions/jpeg_compression_17_9269bee6c98d26e38479.table.json; uploading output.log (+ 2 more)
+wandb: uploading output.log; uploading wandb-summary.json; uploading config.yaml
+wandb: 
+wandb: Run history:
+wandb:              acc_clean ▁
+wandb:      compression_ratio ▁
+wandb:        drop/brightness ▁
+wandb:          drop/contrast ▁
+wandb:      drop/defocus_blur ▁
+wandb: drop/elastic_transform ▁
+wandb:               drop/fog ▁
+wandb:             drop/frost ▁
+wandb:    drop/gaussian_noise ▁
+wandb:        drop/glass_blur ▁
+wandb:                    +16 ...
+wandb: 
+wandb: Run summary:
+wandb: acc_brightness_s1 92.04
+wandb: acc_brightness_s2 91.93
+wandb: acc_brightness_s3 91.64
+wandb: acc_brightness_s4 91.07
+wandb: acc_brightness_s5 89.98
+wandb:         acc_clean 92
+wandb:   acc_contrast_s1 91.59
+wandb:   acc_contrast_s2 90.51
+wandb:   acc_contrast_s3 89.32
+wandb:   acc_contrast_s4 87.46
+wandb:              +243 ...
+wandb: 
+wandb: 🚀 View run eval_resnet20_cifar10_pruning at: https://wandb.ai/tk-redline/CNN-Compression/runs/34rckd6s
+wandb: ⭐️ View project at: https://wandb.ai/tk-redline/CNN-Compression
+wandb: Synced 5 W&B file(s), 15 media file(s), 390 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260624_124441-34rckd6s/logs
+wandb: setting up run molh7sbe
+wandb: Tracking run with wandb version 0.26.1
+wandb: Run data is saved locally in /home/redline/files/CNN-Compression/wandb/run-20260624_125006-molh7sbe
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run eval_resnet20_cifar10_ptq
+wandb: ⭐️ View project at https://wandb.ai/tk-redline/CNN-Compression
+wandb: 🚀 View run at https://wandb.ai/tk-redline/CNN-Compression/runs/molh7sbe
+    acc_clean: 92.00%  mCE: 99.453  latency: 7.07ms  size: 1.14MB
+
+  -- PTQ INT8 --
+Traceback (most recent call last):
+  File "/home/redline/files/CNN-Compression/evaluate.py", line 227, in <module>
+    main()
+  File "/home/redline/files/CNN-Compression/evaluate.py", line 145, in main
+    latency  = measure_latency(model, n_runs=ev_cfg["latency_runs"], device=device)
+  File "/home/redline/files/CNN-Compression/evaluation/metrics.py", line 66, in measure_latency
+    model(dummy)
+  File "/home/redline/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/redline/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+RuntimeError: The following operation failed in the TorchScript interpreter.
+Traceback of TorchScript, serialized code (most recent call last):
+  File "code/__torch__/models/registry.py", line 24, in forward
+    bn1 = self.bn1
+    conv1 = self.conv1
+    _0 = (bn1).forward((conv1).forward(x0, ), )
+          ~~~~~~~~~~~~ <--- HERE
+    x1 = (relu).forward(_0, )
+    layer1 = self.layer1
+  File "code/__torch__/torch/ao/nn/quantized/modules/batchnorm.py", line 26, in forward
+    scale = self.scale
+    zero_point = self.zero_point
+    _0 = ops.quantized.batch_norm2d(input, weight, bias, running_mean, running_var, 1.0000000000000001e-05, annotate(float, scale), annotate(int, zero_point))
+                                                                                                            ~~~~~~~~~~~~~~~~~~~~~ <--- HERE
+    return _0
+
+Traceback of TorchScript, original code (most recent call last):
+  File "/home/redline/files/CNN-Compression/models/registry.py", line 55, in forward
+    def forward(self, x):
+        x = self.quant(x)
+        x = self.relu(self.bn1(self.conv1(x)))
+                      ~~~~~~~~ <--- HERE
+        x = self.layer1(x)
+        x = self.layer2(x)
+  File "/home/redline/.local/lib/python3.10/site-packages/torch/ao/nn/quantized/modules/batchnorm.py", line 74, in forward
+        # disabling this since this is not symbolically traceable
+        # self._check_input_dim(input)
+        return torch.ops.quantized.batch_norm2d(
+               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ <--- HERE
+            input,
+            self.weight,
+RuntimeError: Cannot input a tensor of dimension other than 0 as a scalar argument
+
+Traceback (most recent call last):
+  File "/home/redline/files/CNN-Compression/evaluate.py", line 227, in <module>
+    main()
+  File "/home/redline/files/CNN-Compression/evaluate.py", line 145, in main
+    latency  = measure_latency(model, n_runs=ev_cfg["latency_runs"], device=device)
+  File "/home/redline/files/CNN-Compression/evaluation/metrics.py", line 66, in measure_latency
+    model(dummy)
+  File "/home/redline/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/redline/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+RuntimeError: The following operation failed in the TorchScript interpreter.
+Traceback of TorchScript, serialized code (most recent call last):
+  File "code/__torch__/models/registry.py", line 24, in forward
+    bn1 = self.bn1
+    conv1 = self.conv1
+    _0 = (bn1).forward((conv1).forward(x0, ), )
+          ~~~~~~~~~~~~ <--- HERE
+    x1 = (relu).forward(_0, )
+    layer1 = self.layer1
+  File "code/__torch__/torch/ao/nn/quantized/modules/batchnorm.py", line 26, in forward
+    scale = self.scale
+    zero_point = self.zero_point
+    _0 = ops.quantized.batch_norm2d(input, weight, bias, running_mean, running_var, 1.0000000000000001e-05, annotate(float, scale), annotate(int, zero_point))
+                                                                                                            ~~~~~~~~~~~~~~~~~~~~~ <--- HERE
+    return _0
+
+Traceback of TorchScript, original code (most recent call last):
+  File "/home/redline/files/CNN-Compression/models/registry.py", line 55, in forward
+    def forward(self, x):
+        x = self.quant(x)
+        x = self.relu(self.bn1(self.conv1(x)))
+                      ~~~~~~~~ <--- HERE
+        x = self.layer1(x)
+        x = self.layer2(x)
+  File "/home/redline/.local/lib/python3.10/site-packages/torch/ao/nn/quantized/modules/batchnorm.py", line 74, in forward
+        # disabling this since this is not symbolically traceable
+        # self._check_input_dim(input)
+        return torch.ops.quantized.batch_norm2d(
+               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ <--- HERE
+            input,
+            self.weight,
+RuntimeError: Cannot input a tensor of dimension other than 0 as a scalar argument
+
+[1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33meval_resnet20_cifar10_ptq[0m at: [34mhttps://wandb.ai/tk-redline/CNN-Compression/runs/molh7sbe[0m
+[1;34mwandb[0m: Find logs at: [1;35mwandb/run-20260624_125006-molh7sbe/logs[0m
