@@ -8,3 +8,7 @@ results/*.png
 *.egg-info/
 .env
 wandb/
+*.log
+eval_log.txt
+eval_log.txt
+*.log
