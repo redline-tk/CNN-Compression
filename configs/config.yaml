@@ -54,7 +54,7 @@ phase1_configs:
     label: "QAT"
     method: qat
     epochs: 20
-    lr: 0.001
+    lr: 0.0001
 
   - id: pruning_qat
     label: "Pruning + QAT"
@@ -63,7 +63,7 @@ phase1_configs:
     fine_tune_epochs: 10
     fine_tune_lr: 0.01
     qat_epochs: 20
-    qat_lr: 0.001
+    qat_lr: 0.0001
 
   - id: pruning_kd
     label: "Pruning + KD"
@@ -129,27 +129,27 @@ phase2_configs:
     label: "QAT"
     method: qat
     epochs: 20
-    lr: 0.001
+    lr: 0.0001
 
   - id: qat_int8
     label: "QAT + INT8"
     method: qat_then_convert
     epochs: 20
-    lr: 0.001
+    lr: 0.0001
 
   - id: cqat
     label: "CQAT"
     method: cqat
     n_clusters: 16
     epochs: 20
-    lr: 0.001
+    lr: 0.0001
 
   - id: cqat_int8
     label: "CQAT + INT8"
     method: cqat_then_convert
     n_clusters: 16
     epochs: 20
-    lr: 0.001
+    lr: 0.0001
 
   - id: pqat
     label: "PQAT"
@@ -158,7 +158,7 @@ phase2_configs:
     fine_tune_epochs: 10
     fine_tune_lr: 0.01
     epochs: 20
-    lr: 0.001
+    lr: 0.0001
 
   - id: pqat_int8
     label: "PQAT + INT8"
@@ -167,7 +167,7 @@ phase2_configs:
     fine_tune_epochs: 10
     fine_tune_lr: 0.01
     epochs: 20
-    lr: 0.001
+    lr: 0.0001
 
   - id: pcqat
     label: "PCQAT"
@@ -177,7 +177,7 @@ phase2_configs:
     fine_tune_epochs: 10
     fine_tune_lr: 0.01
     epochs: 20
-    lr: 0.001
+    lr: 0.0001
 
   - id: pcqat_int8
     label: "PCQAT + INT8"
@@ -187,7 +187,7 @@ phase2_configs:
     fine_tune_epochs: 10
     fine_tune_lr: 0.01
     epochs: 20
-    lr: 0.001
+    lr: 0.0001
 
 phase3_configs:
   - id: pruning_20

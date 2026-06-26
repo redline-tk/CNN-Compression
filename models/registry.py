@@ -278,20 +278,45 @@ class QuantEfficientNetB0(nn.Module):
         return self.dequant(x)
 
 
+class _QuantLayerNormWrapper(nn.Module):
+    def __init__(self, ln):
+        super().__init__()
+        self.ln = ln
+        self.ln.qconfig = None
+        self.dequant_local = torch.ao.quantization.DeQuantStub()
+        self.quant_local   = torch.ao.quantization.QuantStub()
+    def forward(self, x):
+        x = self.dequant_local(x)
+        x = self.ln(x)
+        x = self.quant_local(x)
+        return x
+
+
+def _wrap_layernorms(module):
+    for name, child in module.named_children():
+        if isinstance(child, nn.LayerNorm) or type(child).__name__ == "LayerNorm2d":
+            setattr(module, name, _QuantLayerNormWrapper(child))
+        else:
+            _wrap_layernorms(child)
+
+
 class _QuantCNBlock(nn.Module):
     def __init__(self, block):
         super().__init__()
         self.block            = block.block
+        _wrap_layernorms(self.block)
         self.layer_scale      = block.layer_scale
         self.stochastic_depth = block.stochastic_depth
+        self.dequant_local    = torch.ao.quantization.DeQuantStub()
+        self.quant_local      = torch.ao.quantization.QuantStub()
         self.add_op           = FloatFunctional()
-
     def forward(self, x):
-        result = self.layer_scale * self.block(x)
+        result = self.block(x)
+        result = self.dequant_local(result)
+        result = self.layer_scale * result
+        result = self.quant_local(result)
         result = self.stochastic_depth(result)
         return self.add_op.add(result, x)
-
-
 class QuantConvNeXtTiny(nn.Module):
     def __init__(self, num_classes=10):
         super().__init__()
@@ -299,8 +324,7 @@ class QuantConvNeXtTiny(nn.Module):
         in_ch  = base.features[0][0].in_channels
         out_ch = base.features[0][0].out_channels
         base.features[0][0] = nn.Conv2d(in_ch, out_ch, 3, stride=1, padding=1)
-        base.features[0][1] = nn.LayerNorm([out_ch, 32, 32])
-
+        base.features[0][1] = _QuantLayerNormWrapper(nn.LayerNorm([out_ch, 32, 32]))
         wrapped_features = []
         for module in base.features:
             if type(module).__name__ == "Sequential":
@@ -308,27 +332,33 @@ class QuantConvNeXtTiny(nn.Module):
                 for sub in module:
                     if type(sub).__name__ == "CNBlock":
                         wrapped_sub.append(_QuantCNBlock(sub))
+                    elif isinstance(sub, nn.LayerNorm) or type(sub).__name__ == "LayerNorm2d":
+                        wrapped_sub.append(_QuantLayerNormWrapper(sub))
                     else:
                         wrapped_sub.append(sub)
                 wrapped_features.append(nn.Sequential(*wrapped_sub))
+            elif isinstance(module, nn.LayerNorm) or type(module).__name__ == "LayerNorm2d":
+                wrapped_features.append(_QuantLayerNormWrapper(module))
             else:
                 wrapped_features.append(module)
-
         self.quant      = QuantStub()
         self.dequant    = DeQuantStub()
         self.features   = nn.Sequential(*wrapped_features)
         self.avgpool    = base.avgpool
+        classifier_0 = base.classifier[0]
+        if isinstance(classifier_0, nn.LayerNorm) or type(classifier_0).__name__ == "LayerNorm2d":
+            classifier_0 = _QuantLayerNormWrapper(classifier_0)
         self.classifier = nn.Sequential(
-            base.classifier[0],
+            classifier_0,
             base.classifier[1],
             nn.Linear(base.classifier[-1].in_features, num_classes),
         )
-
     def forward(self, x):
         x = self.quant(x)
         x = self.features(x)
         x = self.avgpool(x)
         x = self.classifier(x)
+        return self.dequant(x)
         return self.dequant(x)
 
 

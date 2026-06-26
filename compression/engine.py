@@ -209,6 +209,7 @@ def _train_loop(model, train_loader, val_loader, epochs, lr,
             x, y = x.to(device), y.to(device)
             optimizer.zero_grad()
             criterion(model(x), y).backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
         scheduler.step()
         if (epoch + 1) % 10 == 0 or epoch == 0:
@@ -259,7 +260,10 @@ def train_kd(student, teacher, train_loader, val_loader,
             with torch.no_grad():
                 t_logits = teacher(x)
             loss = _kd_loss(student(x), t_logits, y, temperature, alpha)
-            optimizer.zero_grad(); loss.backward(); optimizer.step()
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(student.parameters(), max_norm=1.0)
+            optimizer.step()
         scheduler.step()
         if (epoch + 1) % 10 == 0 or epoch == 0:
             acc = _quick_acc(student, val_loader, device)
