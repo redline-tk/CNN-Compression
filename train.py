@@ -201,6 +201,11 @@ def run_compression(arch, dataset, phase_configs, cfg, device):
         method = comp_cfg.get("method", "none")
         if method == "none":
             continue
+        out_path_fp32 = ckpt_path(cfg, dataset, arch, cid, is_quantized=False)
+        out_path_q    = ckpt_path(cfg, dataset, arch, cid, is_quantized=True)
+        if os.path.exists(out_path_fp32) or os.path.exists(out_path_q):
+            print(f"  [SKIP] {comp_cfg['label']}: checkpoint exists.")
+            continue
         print(f"\n  -- [{arch}|{dataset}] {comp_cfg['label']} --")
 
         wandb.init(
