@@ -25,7 +25,7 @@ def save_model(model, path, is_quantized):
         try:
             torch.jit.script(model).save(path)
         except Exception:
-            torch.jit.trace(model, torch.randn(1, 3, 32, 32)).save(path)
+            torch.save(model, path)
     else:
         torch.save(model.state_dict(), path)
     print(f"  Saved -> {path}  ({os.path.getsize(path)/1e6:.2f} MB)")

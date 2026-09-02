@@ -1,0 +1,54 @@
+\begin{table}[htbp]
+\centering
+\caption{Sparsity sweep results on CIFAR-10.}
+\label{tab:sparsity_cifar10}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrr}
+\toprule
+\textbf{Architecture} & \textbf{Sparsity} & \textbf{Acc\textsubscript{clean} (\%)} & \textbf{mCE} & \textbf{ECE\textsubscript{clean}} & \textbf{Size (MB)} \\
+\midrule
+\multirow{5}{*}{ResNet-20}
+  & FP32 Baseline & 92.01 & 100.00 & 0.0705 & 1.14 \\
+  & Pruning 20\% & 92.08 & 98.46 & 0.0668 & 1.14 \\
+  & Pruning 50\% & 91.98 & 99.58 & 0.0699 & 1.14 \\
+  & Pruning 70\% & 91.64 & 102.76 & 0.0729 & 1.14 \\
+  & Pruning 90\% & 87.56 & 137.02 & 0.0712 & 1.14 \\
+\midrule
+\multirow{5}{*}{ResNet-50}
+  & FP32 Baseline & 94.52 & 100.00 & 0.0696 & 94.40 \\
+  & Pruning 20\% & 94.72 & 98.26 & 0.0684 & 94.40 \\
+  & Pruning 50\% & 94.68 & 99.83 & 0.0717 & 94.40 \\
+  & Pruning 70\% & 94.76 & 98.58 & 0.0680 & 94.40 \\
+  & Pruning 90\% & 94.41 & 102.31 & 0.0667 & 94.40 \\
+\midrule
+\multirow{5}{*}{VGG-19}
+  & FP32 Baseline & 93.93 & 100.00 & 0.0677 & 81.30 \\
+  & Pruning 20\% & 93.86 & 97.48 & 0.0697 & 81.30 \\
+  & Pruning 50\% & 93.86 & 100.65 & 0.0677 & 81.30 \\
+  & Pruning 70\% & 93.84 & 98.45 & 0.0709 & 81.30 \\
+  & Pruning 90\% & 93.96 & 99.69 & 0.0704 & 81.30 \\
+\midrule
+\multirow{5}{*}{MobileNetV2}
+  & FP32 Baseline & 77.78 & 100.00 & 0.0847 & 9.19 \\
+  & Pruning 20\% & 85.92 & 74.65 & 0.0712 & 9.19 \\
+  & Pruning 50\% & 85.51 & 74.58 & 0.0711 & 9.19 \\
+  & Pruning 70\% & 85.58 & 76.65 & 0.0746 & 9.19 \\
+  & Pruning 90\% & 83.73 & 80.70 & 0.0717 & 9.19 \\
+\midrule
+\multirow{5}{*}{EfficientNet-B0}
+  & FP32 Baseline & 91.31 & 100.00 & 0.0751 & 16.38 \\
+  & Pruning 20\% & 91.66 & 96.12 & 0.0740 & 16.39 \\
+  & Pruning 50\% & 91.50 & 96.41 & 0.0705 & 16.39 \\
+  & Pruning 70\% & 91.37 & 96.45 & 0.0711 & 16.39 \\
+  & Pruning 90\% & 91.36 & 95.77 & 0.0709 & 16.39 \\
+\midrule
+\multirow{5}{*}{ConvNeXt-Tiny}
+  & FP32 Baseline & 63.60 & 100.00 & 0.1000 & 112.16 \\
+  & Pruning 20\% & 64.24 & 98.99 & 0.0975 & 112.16 \\
+  & Pruning 50\% & 64.10 & 98.82 & 0.0965 & 112.16 \\
+  & Pruning 70\% & 63.92 & 98.80 & 0.0937 & 112.16 \\
+  & Pruning 90\% & 64.11 & 99.12 & 0.0972 & 112.16 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}

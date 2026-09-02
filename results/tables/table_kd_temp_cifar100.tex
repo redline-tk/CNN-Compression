@@ -1,0 +1,48 @@
+\begin{table}[htbp]
+\centering
+\caption{KD temperature sweep on CIFAR-100.}
+\label{tab:kd_temp_cifar100}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrr}
+\toprule
+\textbf{Architecture} & \textbf{Method} & \textbf{Acc\textsubscript{clean} (\%)} & \textbf{mCE} & \textbf{ECE\textsubscript{clean}} \\
+\midrule
+\multirow{4}{*}{ResNet-20}
+  & FP32 Baseline & 66.89 & 100.00 & 0.0913 \\
+  & KD $T=2$ & 67.33 & 99.48 & 0.0940 \\
+  & KD $T=4$ & 67.27 & 99.36 & 0.1009 \\
+  & KD $T=8$ & 67.03 & 99.18 & 0.1015 \\
+\midrule
+\multirow{4}{*}{ResNet-50}
+  & FP32 Baseline & 78.59 & 100.00 & 0.0384 \\
+  & KD $T=2$ & 80.61 & 93.67 & 0.0349 \\
+  & KD $T=4$ & 80.53 & 93.28 & 0.0383 \\
+  & KD $T=8$ & 80.48 & 93.83 & 0.0434 \\
+\midrule
+\multirow{4}{*}{VGG-19}
+  & FP32 Baseline & 71.73 & 100.00 & 0.0416 \\
+  & KD $T=2$ & 74.01 & 93.75 & 0.0659 \\
+  & KD $T=4$ & 74.13 & 93.76 & 0.0803 \\
+  & KD $T=8$ & 74.25 & 92.44 & 0.0822 \\
+\midrule
+\multirow{4}{*}{MobileNetV2}
+  & FP32 Baseline & 68.96 & 100.00 & 0.0695 \\
+  & KD $T=2$ & 70.44 & 96.80 & 0.0795 \\
+  & KD $T=4$ & 71.38 & 95.69 & 0.0871 \\
+  & KD $T=8$ & 70.94 & 95.98 & 0.0836 \\
+\midrule
+\multirow{4}{*}{EfficientNet-B0}
+  & FP32 Baseline & 49.76 & 100.00 & 0.0564 \\
+  & KD $T=2$ & 1.00 & 151.40 & 0.2825 \\
+  & KD $T=4$ & 0.99 & 151.41 & 0.3108 \\
+  & KD $T=8$ & 1.00 & 151.40 & 0.5105 \\
+\midrule
+\multirow{4}{*}{ConvNeXt-Tiny}
+  & FP32 Baseline & 40.36 & 100.00 & 0.1186 \\
+  & KD $T=2$ & 35.02 & 99.17 & 0.1269 \\
+  & KD $T=4$ & 34.99 & 99.14 & 0.1264 \\
+  & KD $T=8$ & 34.87 & 99.12 & 0.1258 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}

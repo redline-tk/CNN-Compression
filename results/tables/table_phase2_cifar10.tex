@@ -1,0 +1,120 @@
+\begin{table}[htbp]
+\centering
+\caption{Phase 2 (16-technique grid) results on CIFAR-10.}
+\label{tab:phase2_cifar10}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrr}
+\toprule
+\textbf{Architecture} & \textbf{Method} & \textbf{Acc\textsubscript{clean} (\%)} & \textbf{mCE} & \textbf{Size (MB)} \\
+\midrule
+\multirow{16}{*}{ResNet-20}
+  & FP32 Baseline & 92.01 & 100.00 & 1.14 \\
+  & Quant INT8 & 10.07 & 458.74 & 0.34 \\
+  & Sparsity & 91.88 & 98.84 & 1.14 \\
+  & Sparsity + Quant INT8 & 10.00 & 459.86 & 0.34 \\
+  & Clustering & 85.81 & 160.03 & 1.14 \\
+  & Clustering + Quant INT8 & 10.00 & 460.11 & 0.34 \\
+  & Sparsity-preserving Clustering & 86.98 & 139.62 & 1.14 \\
+  & SPC + INT8 & 10.69 & 454.21 & 0.34 \\
+  & QAT & 50.09 & 328.62 & 0.34 \\
+  & QAT + INT8 & 49.55 & 329.49 & 0.34 \\
+  & CQAT & 47.84 & 336.14 & 0.34 \\
+  & CQAT + INT8 & 44.15 & 346.53 & 0.34 \\
+  & PQAT & 49.72 & 331.37 & 0.34 \\
+  & PQAT + INT8 & 52.48 & 317.07 & 0.34 \\
+  & PCQAT & 44.86 & 344.55 & 0.34 \\
+  & PCQAT + INT8 & 48.20 & 332.54 & 0.34 \\
+\midrule
+\multirow{16}{*}{ResNet-50}
+  & FP32 Baseline & 94.52 & 100.00 & 94.40 \\
+  & Quant INT8 & 10.00 & 616.88 & 24.09 \\
+  & Sparsity & 94.66 & 96.90 & 94.40 \\
+  & Sparsity + Quant INT8 & 9.92 & 617.22 & 24.09 \\
+  & Clustering & 82.54 & 284.59 & 94.40 \\
+  & Clustering + Quant INT8 & 10.00 & 616.88 & 24.09 \\
+  & Sparsity-preserving Clustering & 73.75 & 349.47 & 94.41 \\
+  & SPC + INT8 & 10.00 & 616.88 & 24.10 \\
+  & QAT & 17.55 & 576.83 & 24.09 \\
+  & QAT + INT8 & 17.34 & 582.99 & 24.09 \\
+  & CQAT & 16.81 & 578.19 & 24.08 \\
+  & CQAT + INT8 & 11.62 & 608.27 & 24.09 \\
+  & PQAT & 15.78 & 586.31 & 24.08 \\
+  & PQAT + INT8 & 15.36 & 591.57 & 24.09 \\
+  & PCQAT & 15.10 & 592.59 & 24.08 \\
+  & PCQAT + INT8 & 14.96 & 592.01 & 24.09 \\
+\midrule
+\multirow{16}{*}{VGG-19}
+  & FP32 Baseline & 93.93 & 100.00 & 81.30 \\
+  & Quant INT8 & 93.85 & 100.60 & 20.45 \\
+  & Sparsity & 93.90 & 98.43 & 81.30 \\
+  & Sparsity + Quant INT8 & 94.03 & 98.38 & 20.45 \\
+  & Clustering & 88.82 & 153.59 & 81.30 \\
+  & Clustering + Quant INT8 & 88.51 & 179.65 & 20.45 \\
+  & Sparsity-preserving Clustering & 88.79 & 160.91 & 81.30 \\
+  & SPC + INT8 & 90.45 & 138.82 & 20.45 \\
+  & QAT & 93.81 & 100.08 & 20.45 \\
+  & QAT + INT8 & 93.86 & 99.93 & 20.45 \\
+  & CQAT & 93.41 & 100.88 & 20.45 \\
+  & CQAT + INT8 & 93.37 & 101.29 & 20.45 \\
+  & PQAT & 93.87 & 99.65 & 20.45 \\
+  & PQAT + INT8 & 93.66 & 101.06 & 20.45 \\
+  & PCQAT & 93.34 & 101.09 & 20.45 \\
+  & PCQAT + INT8 & 93.42 & 102.83 & 20.45 \\
+\midrule
+\multirow{16}{*}{MobileNetV2}
+  & FP32 Baseline & 77.78 & 100.00 & 9.19 \\
+  & Quant INT8 & 77.74 & 100.98 & 2.63 \\
+  & Sparsity & 85.53 & 74.90 & 9.19 \\
+  & Sparsity + Quant INT8 & 85.41 & 77.76 & 2.64 \\
+  & Clustering & 67.18 & 134.55 & 9.19 \\
+  & Clustering + Quant INT8 & 60.35 & 155.75 & 2.64 \\
+  & Sparsity-preserving Clustering & 69.92 & 124.54 & 9.20 \\
+  & SPC + INT8 & 73.21 & 118.82 & 2.64 \\
+  & QAT & 80.44 & 90.65 & 2.63 \\
+  & QAT + INT8 & 80.62 & 90.74 & 2.63 \\
+  & CQAT & 79.54 & 93.24 & 2.62 \\
+  & CQAT + INT8 & 79.06 & 94.05 & 2.63 \\
+  & PQAT & 84.32 & 79.75 & 2.62 \\
+  & PQAT + INT8 & 84.31 & 78.79 & 2.63 \\
+  & PCQAT & 83.38 & 80.46 & 2.62 \\
+  & PCQAT + INT8 & 83.36 & 79.73 & 2.63 \\
+\midrule
+\multirow{16}{*}{EfficientNet-B0}
+  & FP32 Baseline & 91.31 & 100.00 & 16.38 \\
+  & Quant INT8 & 90.94 & 103.08 & 4.72 \\
+  & Sparsity & 91.67 & 95.89 & 16.38 \\
+  & Sparsity + Quant INT8 & 91.05 & 97.36 & 4.72 \\
+  & Clustering & 74.91 & 214.45 & 16.39 \\
+  & Clustering + Quant INT8 & 81.39 & 178.91 & 4.72 \\
+  & Sparsity-preserving Clustering & 73.91 & 194.21 & 16.39 \\
+  & SPC + INT8 & 56.72 & 291.60 & 4.72 \\
+  & QAT & 90.88 & 101.46 & 4.71 \\
+  & QAT + INT8 & 90.70 & 101.50 & 4.71 \\
+  & CQAT & 87.94 & 121.42 & 4.70 \\
+  & CQAT + INT8 & 88.80 & 120.32 & 4.71 \\
+  & PQAT & 91.04 & 98.93 & 4.70 \\
+  & PQAT + INT8 & 90.92 & 99.87 & 4.71 \\
+  & PCQAT & 88.51 & 120.90 & 4.70 \\
+  & PCQAT + INT8 & 88.55 & 119.73 & 4.72 \\
+\midrule
+\multirow{16}{*}{ConvNeXt-Tiny}
+  & FP32 Baseline & 63.60 & 100.00 & 112.16 \\
+  & Quant INT8 & 62.99 & 102.62 & 29.64 \\
+  & Sparsity & 63.92 & 101.89 & 112.16 \\
+  & Sparsity + Quant INT8 & 63.15 & 102.23 & 29.65 \\
+  & Clustering & 28.55 & 159.76 & 112.16 \\
+  & Clustering + Quant INT8 & 28.13 & 160.86 & 29.65 \\
+  & Sparsity-preserving Clustering & 32.98 & 153.46 & 112.17 \\
+  & SPC + INT8 & 28.14 & 161.91 & 29.65 \\
+  & QAT & 60.43 & 105.96 & 29.64 \\
+  & QAT + INT8 & 60.28 & 105.68 & 29.64 \\
+  & CQAT & 56.84 & 109.99 & 29.62 \\
+  & CQAT + INT8 & 58.02 & 108.45 & 29.64 \\
+  & PQAT & 60.61 & 104.92 & 29.62 \\
+  & PQAT + INT8 & 61.19 & 104.57 & 29.64 \\
+  & PCQAT & 56.74 & 111.84 & 29.62 \\
+  & PCQAT + INT8 & 56.38 & 110.92 & 29.64 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}

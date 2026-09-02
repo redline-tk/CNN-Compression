@@ -24,6 +24,8 @@ def savefig(fig, path):
 def load_df(results_dir, dataset):
     path = os.path.join(results_dir, f"{dataset}_results.csv")
     if not os.path.exists(path):
+        path = os.path.join(results_dir, dataset + "_figures", f"{dataset}_results.csv")
+    if not os.path.exists(path):
         print(f"[ERROR] {path} not found.")
         sys.exit(1)
     return pd.read_csv(path)
@@ -205,9 +207,10 @@ def main():
     args = parser.parse_args()
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
-    out_dir = cfg["results_dir"]
+    out_dir = os.path.join(cfg["results_dir"], args.dataset + "_figures")
     os.makedirs(out_dir, exist_ok=True)
-    df = load_df(out_dir, args.dataset)
+    os.makedirs(out_dir, exist_ok=True)
+    df = load_df(cfg["results_dir"], args.dataset)
     print(f"Loaded {len(df)} rows\n")
     grouped_bar(df, "acc_clean", "Clean Accuracy (%)", "Clean Test Accuracy",      "clean_accuracy_by_arch.png", out_dir)
     grouped_bar(df, "mce",       "mCE",                "Mean Corruption Error",    "mce_by_arch.png",            out_dir, ref_line=100)

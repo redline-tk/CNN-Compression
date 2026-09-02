@@ -27,10 +27,13 @@ def load_model(cfg, dataset, arch, config_id):
     if path is None:
         return None, False
     if is_q:
-        model = torch.jit.load(path, map_location="cpu")
+        try:
+            model = torch.jit.load(path, map_location="cpu")
+        except Exception:
+            model = torch.load(path, map_location="cpu")
     else:
         model = get_model(arch, num_classes=10 if dataset == "cifar10" else 100)
-        model.load_state_dict(torch.load(path, map_location="cpu"))
+        model.load_state_dict(torch.load(path, map_location="cpu"), strict=False)
     return model.eval(), is_q
 
 
@@ -78,13 +81,15 @@ def main():
     parser.add_argument("--config",  default="configs/config.yaml")
     parser.add_argument("--dataset", default="cifar10", choices=["cifar10", "cifar100"])
     parser.add_argument("--arch",    default=None)
+    parser.add_argument("--configs",  default=None, help="Comma-separated list of config IDs to evaluate")
     args = parser.parse_args()
 
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
 
     os.makedirs(cfg["results_dir"], exist_ok=True)
-    archs  = [args.arch] if args.arch else list_architectures()
+    archs         = [args.arch] if args.arch else list_architectures()
+    filter_configs = set(args.configs.split(',')) if args.configs else None
     ev_cfg = cfg["evaluation"]
     device = "cpu"
     rows   = []
@@ -123,6 +128,8 @@ def main():
             )
 
         for comp_cfg in all_configs(cfg):
+            if filter_configs and comp_cfg['id'] not in filter_configs:
+                continue
             cid         = comp_cfg["id"]
             label       = comp_cfg["label"]
             model, is_q = load_model(cfg, args.dataset, arch, cid)
@@ -211,8 +218,11 @@ def main():
             rows.append(row)
             print(f"    acc_clean: {acc_clean:.2f}%  mCE: {row['mce']}  latency: {latency:.2f}ms  size: {size:.2f}MB")
 
-    summary_run.log({"results_table": results_table})
-    summary_run.finish()
+    try:
+        summary_run.log({"results_table": results_table})
+        summary_run.finish()
+    except Exception:
+        pass
 
     out_csv = os.path.join(cfg["results_dir"], f"{args.dataset}_results.csv")
     if rows:

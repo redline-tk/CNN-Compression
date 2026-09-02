@@ -1,0 +1,60 @@
+\begin{table}[htbp]
+\centering
+\caption{Phase 1 compression results on CIFAR-10.}
+\label{tab:phase1_cifar10}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrrr}
+\toprule
+\textbf{Architecture} & \textbf{Method} & \textbf{Acc\textsubscript{clean} (\%)} & \textbf{mCE} & \textbf{ECE\textsubscript{clean}} & \textbf{Latency (ms)} & \textbf{Size (MB)} \\
+\midrule
+\multirow{6}{*}{ResNet-20}
+  & FP32 Baseline & 92.01 & 100.00 & 0.0705 & 20.59 & 1.14 \\
+  & Pruning & 91.92 & 98.25 & 0.0687 & 16.62 & 1.14 \\
+  & PTQ & 10.09 & 458.75 & 0.8952 & 3.07 & 0.33 \\
+  & QAT & 50.07 & 329.69 & 0.4796 & 1.76 & 0.33 \\
+  & Pruning + QAT & 47.99 & 336.92 & 0.4993 & 221.98 & 0.34 \\
+  & Pruning + KD & 92.22 & 96.35 & 0.0703 & 12.79 & 1.14 \\
+\midrule
+\multirow{6}{*}{ResNet-50}
+  & FP32 Baseline & 94.52 & 100.00 & 0.0696 & 45.59 & 94.40 \\
+  & Pruning & 94.61 & 98.50 & 0.0696 & 388.94 & 94.40 \\
+  & PTQ & 10.00 & 616.88 & 0.9000 & 10.77 & 24.07 \\
+  & QAT & 17.92 & 577.77 & 0.7901 & 211.54 & 24.07 \\
+  & Pruning + QAT & 15.65 & 588.98 & 0.8001 & 8.97 & 24.09 \\
+  & Pruning + KD & 95.29 & 88.35 & 0.0772 & 52.91 & 94.40 \\
+\midrule
+\multirow{6}{*}{VGG-19}
+  & FP32 Baseline & 93.93 & 100.00 & 0.0677 & 15.38 & 81.30 \\
+  & Pruning & 93.71 & 101.00 & 0.0694 & 13.43 & 81.30 \\
+  & PTQ & 93.80 & 100.58 & 0.0700 & 2.73 & 20.45 \\
+  & QAT & 93.79 & 100.57 & 0.0683 & 3.00 & 20.45 \\
+  & Pruning + QAT & 93.86 & 98.97 & 0.0692 & 3.81 & 20.45 \\
+  & Pruning + KD & 94.39 & 92.93 & 0.0789 & 13.13 & 81.30 \\
+\midrule
+\multirow{6}{*}{MobileNetV2}
+  & FP32 Baseline & 77.78 & 100.00 & 0.0847 & 16.21 & 9.19 \\
+  & Pruning & 85.76 & 74.63 & 0.0730 & 20.03 & 9.19 \\
+  & PTQ & 77.68 & 100.71 & 0.0873 & 5.47 & 2.62 \\
+  & QAT & 80.68 & 90.69 & 0.0608 & 5.94 & 2.62 \\
+  & Pruning + QAT & 84.27 & 80.60 & 0.0680 & 6.08 & 2.63 \\
+  & Pruning + KD & 86.21 & 75.54 & 0.1411 & 23.49 & 9.19 \\
+\midrule
+\multirow{6}{*}{EfficientNet-B0}
+  & FP32 Baseline & 91.31 & 100.00 & 0.0751 & 17.80 & 16.38 \\
+  & Pruning & 91.44 & 95.09 & 0.0717 & 24.88 & 16.38 \\
+  & PTQ & 90.92 & 102.27 & 0.0712 & 8.49 & 4.70 \\
+  & QAT & 90.72 & 101.54 & 0.0674 & 9.01 & 4.70 \\
+  & Pruning + QAT & 90.93 & 99.57 & 0.0681 & 7.94 & 4.72 \\
+  & Pruning + KD & 91.07 & 98.73 & 0.0754 & 20.52 & 16.39 \\
+\midrule
+\multirow{6}{*}{ConvNeXt-Tiny}
+  & FP32 Baseline & 63.60 & 100.00 & 0.1000 & 39.81 & 112.16 \\
+  & Pruning & 63.86 & 98.91 & 0.0951 & 23.24 & 112.16 \\
+  & PTQ & 63.07 & 101.94 & 0.0730 & 16.03 & 29.62 \\
+  & QAT & 60.31 & 105.41 & 0.0913 & 16.84 & 29.62 \\
+  & Pruning + QAT & 61.27 & 104.53 & 0.1017 & 16.77 & 29.64 \\
+  & Pruning + KD & 64.13 & 98.92 & 0.1027 & 27.20 & 112.16 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
